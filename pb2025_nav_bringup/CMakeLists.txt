@@ -13,6 +13,13 @@ find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+# Install Python scripts
+install(PROGRAMS
+  scripts/auto_navigation.py
+  scripts/get_coordinates.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_auto_package(
   INSTALL_TO_SHARE
   launch

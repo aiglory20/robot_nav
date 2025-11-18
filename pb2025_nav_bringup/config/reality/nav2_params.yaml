@@ -66,7 +66,7 @@ point_lio:
       ivox_grid_resolution: 0.5
       gravity: [0.0, 0.5305473804473877, -0.8383715748786926]            # gravity to be aligned
       gravity_init: [0.0, 0.5305473804473877, -0.8383715748786926]       # preknown gravity in the first IMU body frame, use when imu_en is False or start from a non-stationary state
-      extrinsic_T: [ -0.011, -0.02329, 0.04412 ]
+      extrinsic_T: [ -0.011, -0.02329, 0.04412 ]                         # TODO: 雷达位置修改
       extrinsic_R: [ 1.0, 0.0, 0.0,
                      0.0, 1.0, 0.0,
                      0.0, 0.0, 1.0 ]
@@ -348,36 +348,36 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.15
-      yaw_goal_tolerance: 6.28
+      xy_goal_tolerance: 0.15                               # TODO: set to desired arrival precision (e.g. 0.1-0.25)
+      yaw_goal_tolerance: 6.28                              # TODO: reduce if robot must face visitors (e.g. 0.2-0.4)
     FollowPath:
       plugin: "pb_omni_pid_pursuit_controller::OmniPidPursuitController"
-      translation_kp: 3.0
-      translation_ki: 0.1
-      translation_kd: 0.3
+      translation_kp: 3.0                                    # TODO: tune for indoor guide (reduce for smoother motion)
+      translation_ki: 0.1                                    # TODO: tune (keep small to avoid integral windup)
+      translation_kd: 0.3                                    # TODO: tune (increase to reduce oscillation)
       enable_rotation: false
       rotation_kp: 3.0
       rotation_ki: 0.1
       rotation_kd: 0.3
       transform_tolerance: 0.1
       min_max_sum_error: 1.0
-      lookahead_dist: 2.0
-      use_velocity_scaled_lookahead_dist: true
-      lookahead_time: 1.0
-      min_lookahead_dist: 0.5
-      max_lookahead_dist: 1.0
+      lookahead_dist: 2.0                                    # TODO: reduce (e.g. 0.6-1.2) for smoother turns and closer following
+      use_velocity_scaled_lookahead_dist: true               # TODO: keep enabled for speed-adaptive lookahead
+      lookahead_time: 1.0                                    # TODO: consider 0.5-0.8 to react earlier at low speed
+      min_lookahead_dist: 0.5                                # TODO: fine-tune lower bound for low-speed approach
+      max_lookahead_dist: 1.0                                # TODO: cap lookahead to ~1.0 for indoor scenarios
       use_interpolation: false
       use_rotate_to_heading: false
       use_rotate_to_heading_treshold: 0.1
-      min_approach_linear_velocity: 0.5
-      approach_velocity_scaling_dist: 1.0
-      v_linear_min: -2.5
-      v_linear_max: 2.5
-      v_angular_min: -3.0
-      v_angular_max: 3.0
-      curvature_min: 0.4                                # 低曲率阈值，低于此值不减速。
-      curvature_max: 0.7                                # 高曲率阈值，高于此值大幅减速。
-      reduction_ratio_at_high_curvature: 0.5            # 高曲率时的速度降低比例。 0.5 (即减速 50%)
+      min_approach_linear_velocity: 0.5                      # TODO: lower (e.g. 0.05-0.2) for gentle final approach to exhibit
+      approach_velocity_scaling_dist: 1.0                    # TODO: tune scaling distance for smooth deceleration
+      v_linear_min: -2.5                                     # TODO: set conservative min/max for indoor (e.g. -1.0..1.0)
+      v_linear_max: 2.5                                      # TODO: reduce max linear speed to ~0.6-1.2 m/s for safety
+      v_angular_min: -3.0                                    # TODO: set conservative angular limits (e.g. -1.5..1.5)
+      v_angular_max: 3.0                                     # TODO: reduce max angular speed for comfortable turning
+      curvature_min: 0.4                                # 低曲率阈值，低于此值不减速。 # TODO: adjust for indoor turns
+      curvature_max: 0.7                                # 高曲率阈值，高于此值大幅减速。 # TODO: consider lowering to slow earlier
+      reduction_ratio_at_high_curvature: 0.5            # 高曲率时的速度降低比例。 0.5 (即减速 50%) # TODO: increase reduction for safety
       curvature_forward_dist: 0.7                       # 前向距离，用于曲率计算
       curvature_backward_dist: 0.3                      # 后向距离，用于曲率计算
       max_velocity_scaling_factor_rate: 0.9             # 速度缩放因子的最大变化率
@@ -386,15 +386,15 @@ local_costmap:
   local_costmap:
     ros__parameters:
       use_sim_time: False
-      update_frequency: 10.0
-      publish_frequency: 5.0
+      update_frequency: 10.0                                # TODO: tune for sensor/CPU load
+      publish_frequency: 5.0                                # TODO: tune as needed
       global_frame: odom
       robot_base_frame: gimbal_yaw_fake
       rolling_window: true
-      width: 5
-      height: 5
-      resolution: 0.05
-      robot_radius: 0.2
+      width: 5                                             # TODO: adjust rolling window size for corridors/rooms
+      height: 5                                            # TODO: adjust rolling window size for corridors/rooms
+      resolution: 0.05                                     # TODO: consider finer (0.03) if CPU allows for indoor precision
+      robot_radius: 0.2                                    # TODO: set to robot actual radius + safety margin (e.g. +0.1~0.2m)
       plugins: ["static_layer", "intensity_voxel_layer", "inflation_layer"]
       intensity_voxel_layer:
         plugin: pb_nav2_costmap_2d::IntensityVoxelLayer
@@ -417,7 +417,7 @@ local_costmap:
           data_type: PointCloud2
           # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
           # It doesn't need to start with '/'
-          topic: <robot_namespace>/terrain_map
+          topic: <robot_namespace>/terrain_map                      # TODO: replace <robot_namespace> and ensure topic is published
           sensor_frame: front_mid360
           min_obstacle_height: 0.0
           max_obstacle_height: 2.0
@@ -428,16 +428,16 @@ local_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 4.0
-        inflation_radius: 0.7
+        cost_scaling_factor: 4.0                            # TODO: tune to give visitors sufficient clearance
+        inflation_radius: 0.7                               # TODO: consider increasing to 0.8-1.0m for safety around people
       always_send_full_costmap: False
 
 global_costmap:
   global_costmap:
     ros__parameters:
       use_sim_time: False
-      update_frequency: 5.0
-      publish_frequency: 2.0
+      update_frequency: 5.0                                 # TODO: tune for lower CPU in multi-module scenarios
+      publish_frequency: 2.0                                # TODO: tune as needed
       global_frame: map
       robot_base_frame: gimbal_yaw_fake
       robot_radius: 0.2
@@ -465,7 +465,7 @@ global_costmap:
           data_type: PointCloud2
           # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
           # It doesn't need to start with '/'
-          topic: <robot_namespace>/terrain_map_ext
+          topic: <robot_namespace>/terrain_map_ext                    # TODO: replace <robot_namespace> and ensure external terrain topic
           sensor_frame: front_mid360
           min_obstacle_height: 0.0
           max_obstacle_height: 2.0
@@ -540,10 +540,10 @@ behavior_server:
     global_frame: map
     robot_base_frame: gimbal_yaw_fake
     transform_tolerance: 0.1
-    simulate_ahead_time: 2.0
-    max_rotational_vel: 1.0
-    min_rotational_vel: 0.4
-    rotational_acc_lim: 3.2
+    simulate_ahead_time: 2.0                                # TODO: tune simulation lookahead for behavior prediction
+    max_rotational_vel: 1.0                                 # TODO: set conservative rotation speed for safety
+    min_rotational_vel: 0.4                                 # TODO: set minimum rotation speed (or 0 for stop-rotate)
+    rotational_acc_lim: 3.2                                 # TODO: consider lowering for smoother turns
     # params for pb_nav2_behaviors/BackUpFreeSpace
     service_name: "global_costmap/get_costmap"
     max_radius: 2.0
@@ -558,7 +558,7 @@ waypoint_follower:
     wait_at_waypoint:
       plugin: "nav2_waypoint_follower::WaitAtWaypoint"
       enabled: True
-      waypoint_pause_duration: 200
+      waypoint_pause_duration: 200                           # TODO: replace fixed pause with event-driven TTS end trigger
 
 velocity_smoother:
   ros__parameters:
@@ -566,10 +566,10 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: False
     feedback: "OPEN_LOOP"
-    max_velocity: [2.5, 2.5, 3.0]
-    min_velocity: [-2.5, -2.5, -3.0]
-    max_accel: [4.5, 4.5, 5.0]
-    max_decel: [-4.5, -4.5, -5.0]
+    max_velocity: [2.5, 2.5, 3.0]                           # TODO: reduce linear/angular max_velocity for indoor guide (e.g. [1.0,1.0,1.5])
+    min_velocity: [-2.5, -2.5, -3.0]                        # TODO: set conservative min_velocity
+    max_accel: [4.5, 4.5, 5.0]                              # TODO: lower accel for comfort (e.g. 1.0-2.5)
+    max_decel: [-4.5, -4.5, -5.0]                           # TODO: lower decel for smoother braking
     odom_topic: "odometry"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
