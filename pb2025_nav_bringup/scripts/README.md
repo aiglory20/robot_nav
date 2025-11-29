@@ -110,7 +110,7 @@ ros2 topic echo /initialpose
 ### 坐标系说明
 
 - **X轴**: 向前为正
-- **Y轴**: 向左为正  
+- **Y轴**: 向左为正
 - **Yaw角度**:
   - `0` 或 `0.0` rad = 0° (向右)
   - `1.57` rad ≈ 90° (向前)
@@ -197,7 +197,7 @@ controller_server:
   FollowPath:
     enable_rotation: false           # ✅ 已关闭
     use_rotate_to_heading: false     # ✅ 已关闭
-    
+
 general_goal_checker:
   yaw_goal_tolerance: 6.28           # ✅ 不检查朝向
 ```
