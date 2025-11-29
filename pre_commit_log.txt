@@ -1,0 +1,15 @@
+check for added large files..............................................Passed
+check python ast.........................................................Passed
+check for case conflicts.................................................Passed
+check docstring is first.................................................Passed
+check for merge conflicts................................................Passed
+check for broken symlinks............................(no files to check)Skipped
+check xml................................................................Passed
+check yaml...............................................................Passed
+debug statements (python)................................................Passed
+fix end of files.........................................................Passed
+mixed line ending........................................................Passed
+trim trailing whitespace.................................................Passed
+fix utf-8 byte order marker..............................................Passed
+codespell................................................................Interrupted (^C): KeyboardInterrupt:
+Check the log at /home/jiu/.cache/pre-commit/pre-commit.log

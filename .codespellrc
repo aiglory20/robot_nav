@@ -1,0 +1,3 @@
+[codespell]
+skip = .git,*.so,*.a,*/3rdparty/*,*/Livox-SDK2/*,point_lio/include/IKFoM/*,point_lio/include/matplotlibcpp.h,point_lio/include/ivox/*,*.pcd,*.pgm,*.yaml,log/*
+ignore-words-list = bu,numer,singed
