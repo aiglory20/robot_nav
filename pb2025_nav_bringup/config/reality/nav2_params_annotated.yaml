@@ -1,0 +1,613 @@
+# Annotated Nav2 parameter set explaining every field in-place.
+
+livox_ros_driver2:
+  ros__parameters:
+    xfer_format: 4                                      # Message type selection (4 publishes PointCloud, Custom, PCL, and IMU together)
+    multi_topic: 0                                      # Whether each LiDAR gets its own topic (0 = share one topic)
+    data_src: 0                                         # Data source identifier (0 = live LiDAR hardware)
+    publish_freq: 20.0                                  # Publication rate (Hz) for outgoing data
+    output_data_type: 0                                 # Format of outgoing point clouds (0 = PointCloud2)
+    frame_id: front_mid360                              # TF frame name attached to published messages
+    user_config_path: $(find-pkg-share pb2025_nav_bringup)/config/reality/mid360_user_config.json  # Vendor JSON with sensor calibration
+    cmdline_input_bd_code: livox0000000001              # Broadcast code used to connect to this Livox unit
+    lvx_file_path: ""                                   # Optional LVX recording to replay instead of live data
+
+point_lio:
+  ros__parameters:
+    use_imu_as_input: False                             # If true, consumes IMU as primary propagation input
+    prop_at_freq_of_imu: True                           # Propagates states at IMU frequency when enabled
+    check_satu: True                                    # Enables saturation check to discard unrealistic IMU readings
+    init_map_size: 10                                   # Initial voxel map size in meters for Point-LIO
+    point_filter_num: 8                                 # Minimum number of neighboring points for feature selection
+    space_down_sample: True                             # Enables spatial downsampling before processing
+    filter_size_surf: 0.2                               # Leaf size (m) for surface points voxel filter
+    filter_size_map: 0.2                                # Leaf size (m) for map voxels
+    ivox_nearby_type: 18                                # Defines neighbor lookup (18-connectivity for IVox)
+    runtime_pos_log_enable: False                       # Toggles pose logging at runtime
+
+    common:
+      lid_topic: "livox/lidar"                         # Input LiDAR topic name
+      imu_topic: "livox/imu"                           # Input IMU topic name
+      con_frame: False                                  # Whether to merge multiple LiDAR frames before processing
+      con_frame_num: 1                                  # Number of frames to merge when con_frame is true
+      cut_frame: False                                  # Whether to split one LiDAR frame into subframes
+      cut_frame_time_interval: 0.05                     # Time gap (s) between subframes when cutting
+      time_diff_lidar_to_imu: 0.0                       # Time offset (s) applied between LiDAR and IMU stamps
+
+    prior_pcd:
+      enable: False                                     # Enables loading of a prior point cloud map
+      # NOTE: `prior_pcd_map_path` will be provided in the launch file
+      # prior_pcd_map_path: ""
+      init_pose: [ 0.0, 0.0, 0.0 ]                      # Initial pose [x,y,z] for aligning prior map
+
+    preprocess:
+      lidar_type: 1                                     # LiDAR type identifier (1 = Livox series)
+      scan_line: 4                                      # Number of scan lines to expect from the LiDAR
+      timestamp_unit: 3                                 # Point cloud timestamp units (3 = nanoseconds)
+      blind: 0.5                                        # Blind zone radius (m) to discard near points
+
+    mapping:
+      imu_en: True                                      # Enables IMU fusion in mapping
+      extrinsic_est_en: False                           # Solves for LiDAR-IMU extrinsics online when true
+      imu_time_inte: 0.005                              # IMU integration interval (s)
+      lidar_time_inte: 0.1                              # LiDAR integration interval (s)
+      satu_acc: 4.0                                     # Acceleration saturation threshold (g)
+      satu_gyro: 35.0                                   # Gyro saturation threshold (deg/s)
+      acc_norm: 1.0                                     # Expected gravity magnitude in IMU units
+      lidar_meas_cov: 0.01                              # LiDAR measurement covariance
+      acc_cov_output: 500.0                             # Output covariance for accelerometer bias
+      gyr_cov_output: 1000.0                            # Output covariance for gyro bias
+      b_acc_cov: 0.0001                                 # Process noise for accelerometer bias
+      b_gyr_cov: 0.0001                                 # Process noise for gyro bias
+      imu_meas_acc_cov: 0.1                              # IMU accelerometer measurement covariance
+      imu_meas_omg_cov: 0.1                              # IMU gyro measurement covariance
+      gyr_cov_input: 0.1                                # Input model covariance for gyro when IMU drives propagation
+      acc_cov_input: 0.1                                # Input model covariance for accelerometer when IMU drives propagation
+      plane_thr: 0.1                                    # Flatness threshold for selecting planar features
+      match_s: 81.0                                     # Number of matching points used during optimization
+      ivox_grid_resolution: 0.5                         # Size (m) of IVox grid resolution
+      gravity: [0.0, 0.0, -1.0]                         # Gravity vector expressed in IMU coordinates
+      gravity_init: [0.0, 0.0, -1.0]                    # Initial gravity guess when IMU not stationary
+      extrinsic_T: [ -0.011, -0.02329, 0.04412 ]        # LiDAR translation offset from IMU in meters
+      extrinsic_R: [ 1.0, 0.0, 0.0,
+                     0.0, 1.0, 0.0,
+                     0.0, 0.0, 1.0 ]                    # LiDAR rotation relative to IMU frame (identity here)
+
+    odometry:
+      publish_odometry_without_downsample: True         # Publish odom even when pointcloud is not downsampled
+
+    publish:
+      path_en: False                                    # Enables publishing of estimated path when true
+      scan_publish_en: True                             # Enables publishing processed point clouds
+      scan_bodyframe_pub_en: False                      # Publishes scans in body frame when true
+      tf_send_en: False                                 # Publishes transform tree updates when true
+
+    pcd_save:
+      pcd_save_en: False                                # Enables saving point clouds to disk
+      interval: -1                                      # Number of frames per PCD file (-1 = save all into single file)
+
+loam_interface:
+  ros__parameters:
+    use_sim_time: False                                 # Use /clock for simulation time when true
+    state_estimation_topic: "aft_mapped_to_init"        # Input pose topic from LOAM
+    registered_scan_topic: "cloud_registered"          # Registered LiDAR scan topic name
+    odom_frame: "odom"                                 # TF frame providing odometry
+    base_frame: "base_footprint"                       # Robot base frame used by LOAM interface
+    lidar_frame: "front_mid360"                        # LiDAR frame used for transforms
+
+sensor_scan_generation:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulation time for synthetic scan generation
+    lidar_frame: "front_mid360"                        # Source point cloud frame
+    base_frame: "base_footprint"                       # Target frame for generated scans
+    robot_base_frame: "gimbal_yaw"                     # Robot base used for TF lookups
+
+terrain_analysis:
+  ros__parameters:
+    scanVoxelSize: 0.05                 # Leaf size (m) for point cloud downsampling
+    decayTime: 0.5                      # Time (s) before points are considered stale
+    noDecayDis: 0.0                     # Distance below which decay is ignored
+    clearingDis: 0.0                    # Distance beyond which points are pruned
+    useSorting: True                    # Use percentile-based ground estimation when true
+    quantileZ: 0.2                      # Percentile threshold for ground extraction when sorting
+    considerDrop: False                 # Treat downward drops as obstacles when true
+    limitGroundLift: False              # Limit high ground lift values when true
+    maxGroundLift: 0.3                  # Maximum allowed ground lift (m)
+    clearDyObs: True                    # Remove dynamic obstacles based on temporal consistency
+    minDyObsDis: 0.3                    # Minimum distance (m) for dynamic obstacle filtering
+    minDyObsAngle: 0.0                  # Minimum angle (deg) for classifying dynamic obstacles
+    minDyObsRelZ: -0.3                  # Minimum relative height (m) considered dynamic
+    absDyObsRelZThre: 0.2               # Absolute relative height threshold for dynamics
+    minDyObsVFOV: -28.0                 # Lower vertical field-of-view bound (deg)
+    maxDyObsVFOV: 33.0                  # Upper vertical field-of-view bound (deg)
+    minDyObsPointNum: 1                 # Minimum points required to classify dynamic obstacle
+    noDataObstacle: False               # Treat unknown space as obstacle when true
+    noDataBlockSkipNum: 0               # How many unknown blocks to skip before marking obstacles
+    minBlockPointNum: 10                # Minimum points per voxel block to treat as valid
+    vehicleHeight: 0.5                  # Only points below this height (m) are processed
+    voxelPointUpdateThre: 100           # Max points allowed per voxel update cycle
+    voxelTimeUpdateThre: 1.0            # Minimum time (s) between voxel updates
+    minRelZ: -1.5                       # Minimum relative Z accepted after filtering
+    maxRelZ: 0.5                        # Maximum relative Z accepted after filtering
+    disRatioZ: 0.2                      # Scaling ratio for Z bounds versus distance
+
+terrain_analysis_ext:
+  ros__parameters:
+    scanVoxelSize: 0.1                  # Leaf size (m) for extended terrain map
+    decayTime: 0.2                      # Time-to-live (s) for extended map points
+    noDecayDis: 0.0                     # Distance below which decay is disabled
+    clearingDis: 20.0                   # Range (m) beyond which points are cleared
+    useSorting: true                    # Use percentile ground estimation for extended map
+    quantileZ: 0.2                      # Percentile used for ground level in extended map
+    vehicleHeight: 1.0                  # Height threshold for considered points in extended map
+    voxelPointUpdateThre: 100           # Point threshold per voxel update in extended map
+    voxelTimeUpdateThre: 2.0            # Minimum seconds between voxel updates
+    lowerBoundZ: -1.5                   # Lower valid Z bound (m)
+    upperBoundZ: 0.5                    # Upper valid Z bound (m)
+    disRatioZ: 0.2                      # Scaling ratio for Z bounds vs distance
+    checkTerrainConn: False             # Evaluate terrain connectivity when true
+    terrainUnderVehicle: -0.75          # Estimated ground height directly under vehicle (m)
+    terrainConnThre: 0.5                # Threshold for considering terrain connected
+    ceilingFilteringThre: 2.0           # Height difference (m) to classify ceilings
+    localTerrainMapRadius: 4.0          # Radius (m) for local terrain map extraction
+
+fake_vel_transform:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulated clock for twist remapping
+    odom_topic: "odometry"                             # Source odometry topic for twist compensation
+    robot_base_frame: "gimbal_yaw"                     # Real robot frame providing motion
+    fake_robot_base_frame: "gimbal_yaw_fake"           # Virtual base frame used by Nav2
+    input_cmd_vel_topic: "cmd_vel_nav2_result"         # Command velocity input topic from Nav2
+    output_cmd_vel_topic: "cmd_vel"                    # Physical robot command velocity topic
+    cmd_spin_topic: "cmd_spin"                         # Topic for spin commands
+    init_spin_speed: 0.001                              # Initial rotational speed (rad/s) for spin alignment
+
+small_gicp_relocalization:
+  ros__parameters:
+    use_sim_time: False                                 # Whether to use simulation time for relocalization
+    num_threads: 4                                      # Number of threads used by GICP matcher
+    num_neighbors: 20                                   # Nearest neighbors used per point in registration
+    global_leaf_size: 0.1                               # Voxel size (m) when loading global map
+    registered_leaf_size: 0.05                          # Voxel size (m) for incoming scans
+    max_dist_sq: 3.0                                    # Maximum squared distance (m^2) for correspondences
+    map_frame: "map"                                    # Global frame for the stored map
+    odom_frame: "odom"                                 # Intermediate odometry frame
+    base_frame: "base_footprint"                       # Robot frame used when publishing
+    robot_base_frame: "gimbal_yaw"                     # Robot base used for TF lookups
+    lidar_frame: "front_mid360"                        # LiDAR frame providing scan data
+    init_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]           # Initial pose guess [x,y,z,roll,pitch,yaw]
+    # The prior_pcd_file does not need to be specified since it going to be set by defaults in launch.
+    # prior_pcd_file: ""
+
+pointcloud_to_laserscan:
+  ros__parameters:
+    use_sim_time: False                                 # Whether to use simulated time
+    target_frame: base_footprint                        # Frame for generated LaserScan
+    min_height: -0.5                                    # Minimum Z (m) included in scan
+    max_height: 6.0                                     # Maximum Z (m) included in scan
+    min_intensity: 0.1                                  # Minimum point intensity kept
+    max_intensity: 2.0                                  # Maximum point intensity kept
+    angle_min: -3.1415926                               # Lower angle limit (rad)
+    angle_max: 3.1415926                                # Upper angle limit (rad)
+    angle_increment: 0.00872665                         # Angular resolution (rad)
+    scan_time: 0.05                                     # Time (s) between scans
+    range_min: 0.3                                      # Minimum reported range (m)
+    range_max: 10.0                                     # Maximum reported range (m)
+    use_inf: true                                       # Publish +inf when no return rather than max range
+
+slam_toolbox:
+  ros__parameters:
+    # https://github.com/SteveMacenski/slam_toolbox/tree/humble?#configuration
+    solver_plugin: solver_plugins::CeresSolver          # Optimization backend plugin name
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY         # Linear solver strategy within Ceres
+    ceres_preconditioner: SCHUR_JACOBI                  # Preconditioner for Ceres linear solver
+    ceres_trust_strategy: LEVENBERG_MARQUARDT           # Trust-region strategy used by optimizer
+    ceres_dogleg_type: TRADITIONAL_DOGLEG               # Dogleg type (unused for LM)
+    ceres_loss_function: None                           # Loss function applied to residuals
+
+    odom_frame: odom                                    # Frame ID for odom->base transform
+    map_frame: map                                      # Frame where the map is published
+    base_frame: base_footprint                          # Robot base frame used by SLAM
+    scan_topic: obstacle_scan                           # Input LaserScan topic
+    use_map_saver: true                                 # Enable map saver integration
+    mode: mapping                                       # Operating mode (mapping/localization/continue)
+
+    # if you'd like to immediately start continuing a map at a given pose
+    # or at the dock, but they are mutually exclusive, if pose is given
+    # will use pose
+    # map_file_name: test_steve
+    # map_start_pose: [0.0, 0.0, 0.0]
+    # map_start_at_dock: true
+
+    debug_logging: false                                # Enable verbose debugging logs
+    throttle_scans: 1                                   # Process every scan (>=1 means every nth scan)
+    scan_queue_size: 10                                 # Queue length for incoming scans
+    transform_publish_period: 0.0                       # Interval (s) for SLAM TF publication (0=never)
+    map_update_interval: 0.5                            # Seconds between map updates
+    resolution: 0.05                                    # Map resolution (m/cell)
+    min_laser_range: 0.3                                # Minimum LiDAR range used for mapping (m)
+    max_laser_range: 10.0                               # Maximum LiDAR range used for mapping (m)
+    minimum_time_interval: 0.2                          # Minimum delta time between processed scans (s)
+    transform_timeout: 0.2                              # TF lookup timeout (s)
+    tf_buffer_duration: 10.                             # Duration (s) of TF buffer
+    stack_size_to_use: 40000000                         # Thread stack size (bytes) required for serialization
+    enable_interactive_mode: true                       # Allow interactive map editing via RViz
+
+    # General Parameters
+    use_scan_matching: false                            # Match scans vs map (false favors odom)
+    use_scan_barycenter: true                           # Use scan centroid to reduce noise
+    minimum_travel_distance: 0.1                        # Minimum distance (m) to process new scan
+    minimum_travel_heading: 0.1                         # Minimum heading change (rad) to process new scan
+    scan_buffer_size: 10                                # Number of scans kept in buffer
+    scan_buffer_maximum_scan_distance: 10.0             # Max scan-to-scan distance (m)
+    link_match_minimum_response_fine: 0.1               # Minimum response for fine matcher link
+    link_scan_maximum_distance: 1.5                     # Max distance (m) between linked scans
+    loop_search_maximum_distance: 3.0                   # Max distance (m) when searching for loop closures
+    do_loop_closing: false                              # Whether to perform loop closure correction
+    loop_match_minimum_chain_size: 10                   # Minimum scans in loop closure chain
+    loop_match_maximum_variance_coarse: 3.0             # Maximum coarse variance allowed for loop closure
+    loop_match_minimum_response_coarse: 0.35            # Minimum coarse response for loop closure
+    loop_match_minimum_response_fine: 0.45              # Minimum fine response for loop closure
+
+    # Correlation Parameters - Correlation Parameters
+    correlation_search_space_dimension: 0.5             # Search space width (m) for correlation
+    correlation_search_space_resolution: 0.01           # Step size (m) within search space
+    correlation_search_space_smear_deviation: 0.1       # Gaussian smear deviation for correlation
+
+    # Correlation Parameters - Loop Closure Parameters
+    loop_search_space_dimension: 8.0                    # Width (m) of loop closure search space
+    loop_search_space_resolution: 0.05                  # Step size (m) for loop closure search
+    loop_search_space_smear_deviation: 0.03             # Smear deviation for loop closure search
+
+    # Scan Matcher Parameters
+    distance_variance_penalty: 5.5                      # Penalty weight for translational error
+    angle_variance_penalty: 5.0                         # Penalty weight for rotational error
+
+    fine_search_angle_offset: 0.00349                   # Angular window (rad) for fine search
+    coarse_search_angle_offset: 0.349                   # Angular window (rad) for coarse search
+    coarse_angle_resolution: 0.0349                     # Angular resolution (rad) for coarse search
+    minimum_angle_penalty: 0.9                          # Minimum penalty applied to angles
+    minimum_distance_penalty: 0.5                       # Minimum penalty applied to distances
+    use_response_expansion: true                        # Expand search around best responses
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: False                                 # Whether BT Navigator uses simulation time
+    global_frame: map                                   # Global frame for goals and results
+    robot_base_frame: gimbal_yaw_fake                   # Robot base frame used by BT
+    odom_topic: odometry                                # Odometry topic feeding BT Navigator
+    bt_loop_duration: 10                                # Behavior tree tick period (ms)
+    default_server_timeout: 100                         # Default timeout (ms) for BT service calls
+    wait_for_service_timeout: 1000                      # Timeout (ms) when waiting for action servers
+    default_nav_to_pose_bt_xml: $(find-pkg-share pb2025_nav_bringup)/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml  # Default BT for single goal navigation
+    default_nav_through_poses_bt_xml: $(find-pkg-share pb2025_nav_bringup)/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml  # Default BT for waypoint navigation
+    plugin_lib_names:                                   # Behavior tree node plugins to load
+      - nav2_compute_path_to_pose_action_bt_node        # Action node for path computation
+      - nav2_compute_path_through_poses_action_bt_node  # Action node for multi-pose paths
+      - nav2_smooth_path_action_bt_node                 # Action node that smooths paths
+      - nav2_follow_path_action_bt_node                 # Action node for controller execution
+      - nav2_spin_action_bt_node                        # Action node to spin robot
+      - nav2_wait_action_bt_node                        # Action node to wait
+      - nav2_assisted_teleop_action_bt_node             # Action node for assisted teleop
+      - nav2_back_up_action_bt_node                     # Action node to back up robot
+      - nav2_drive_on_heading_bt_node                   # Action node to drive straight
+      - nav2_clear_costmap_service_bt_node              # Service call to clear costmaps
+      - nav2_is_stuck_condition_bt_node                 # Condition node for stuck detection
+      - nav2_goal_reached_condition_bt_node             # Condition for goal reached
+      - nav2_goal_updated_condition_bt_node             # Condition for goal updates
+      - nav2_globally_updated_goal_condition_bt_node    # Condition for global goal updates
+      - nav2_is_path_valid_condition_bt_node            # Condition verifying path validity
+      - nav2_initial_pose_received_condition_bt_node    # Condition for initial pose availability
+      - nav2_reinitialize_global_localization_service_bt_node  # Service to reset localization
+      - nav2_rate_controller_bt_node                    # Rate controller decorator node
+      - nav2_distance_controller_bt_node                # Distance-based decorator node
+      - nav2_speed_controller_bt_node                   # Speed-based decorator node
+      - nav2_truncate_path_action_bt_node               # Action trimming path segments
+      - nav2_truncate_path_local_action_bt_node         # Local path truncation action
+      - nav2_goal_updater_node_bt_node                  # Goal update action node
+      - nav2_recovery_node_bt_node                      # Recovery behavior sequence
+      - nav2_pipeline_sequence_bt_node                  # Pipeline composite node
+      - nav2_round_robin_node_bt_node                   # Round-robin composite node
+      - nav2_transform_available_condition_bt_node      # Condition verifying TF availability
+      - nav2_time_expired_condition_bt_node             # Condition checking timeouts
+      - nav2_path_expiring_timer_condition              # Condition for path expiring timer
+      - nav2_distance_traveled_condition_bt_node        # Condition on traveled distance
+      - nav2_single_trigger_bt_node                     # Single trigger decorator
+      - nav2_goal_updated_controller_bt_node            # Controller-specific goal update
+      - nav2_is_battery_low_condition_bt_node           # Battery status condition
+      - nav2_navigate_through_poses_action_bt_node      # Action for multi-pose navigation
+      - nav2_navigate_to_pose_action_bt_node            # Action for single pose navigation
+      - nav2_remove_passed_goals_action_bt_node         # Action removing visited goals
+      - nav2_planner_selector_bt_node                   # Selector for planner plugins
+      - nav2_controller_selector_bt_node                # Selector for controller plugins
+      - nav2_goal_checker_selector_bt_node              # Selector for goal checkers
+      - nav2_controller_cancel_bt_node                  # Action to cancel controller
+      - nav2_path_longer_on_approach_bt_node            # Condition on path length increase
+      - nav2_wait_cancel_bt_node                        # Action to cancel wait behavior
+      - nav2_spin_cancel_bt_node                        # Action to cancel spin behavior
+      - nav2_back_up_cancel_bt_node                     # Action to cancel backup behavior
+      - nav2_assisted_teleop_cancel_bt_node             # Action to cancel assisted teleop
+      - nav2_drive_on_heading_cancel_bt_node            # Action to cancel drive-on-heading
+      - nav2_is_battery_charging_condition_bt_node      # Condition for charging status
+
+controller_server:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulation time for controller server
+    odom_topic: odometry                                # Odometry source for controller feedback
+    controller_frequency: 20.0                          # Control loop frequency (Hz)
+    min_x_velocity_threshold: 0.001                     # Threshold to treat x velocity as zero
+    min_y_velocity_threshold: 0.001                     # Threshold to treat y velocity as zero
+    min_theta_velocity_threshold: 0.001                 # Threshold to treat angular velocity as zero
+    failure_tolerance: 0.3                              # Allowable deviation (m) before aborting
+    progress_checker_plugins: ["progress_checker"]     # List of progress checker plugin IDs
+    goal_checker_plugins: ["general_goal_checker"]     # List of goal checker plugin IDs
+    controller_plugins: ["FollowPath"]                 # Controller plugin IDs loaded
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker" # Progress checker plugin class
+      required_movement_radius: 0.5                     # Required movement radius (m) to consider progress
+      movement_time_allowance: 10.0                     # Allowed time (s) without progress
+    general_goal_checker:
+      stateful: True                                    # Maintain state between goal checks
+      plugin: "nav2_controller::SimpleGoalChecker"      # Goal checker plugin class
+      xy_goal_tolerance: 0.12                           # Positional tolerance (m)
+      yaw_goal_tolerance: 0.35                          # Heading tolerance (rad)
+    FollowPath:
+      plugin: "pb_omni_pid_pursuit_controller::OmniPidPursuitController"  # Controller plugin implementation
+      translation_kp: 1.6                                # Proportional gain for translation
+      translation_ki: 0.05                              # Integral gain for translation
+      translation_kd: 0.15                              # Derivative gain for translation
+      enable_rotation: false                            # Whether controller handles rotation
+      rotation_kp: 1.5                                  # Proportional gain for rotation
+      rotation_ki: 0.05                                 # Integral gain for rotation
+      rotation_kd: 0.2                                  # Derivative gain for rotation
+      transform_tolerance: 0.1                          # TF tolerance (s) when querying transforms
+      min_max_sum_error: 1.0                            # Clamp integral term magnitude
+      lookahead_dist: 0.8                               # Pure pursuit lookahead distance (m)
+      use_velocity_scaled_lookahead_dist: true          # Scale lookahead with speed
+      lookahead_time: 0.6                               # Lookahead time (s) when scaling by velocity
+      min_lookahead_dist: 0.35                          # Minimum allowable lookahead distance (m)
+      max_lookahead_dist: 0.8                           # Maximum allowable lookahead distance (m)
+      use_interpolation: false                          # Interpolate between path points when true
+      use_rotate_to_heading: false                      # Rotate-to-heading behavior near goal
+      use_rotate_to_heading_treshold: 0.1               # Velocity threshold for rotate-to-heading transition
+      min_approach_linear_velocity: 0.05                # Minimum speed near goal (m/s)
+      approach_velocity_scaling_dist: 0.5               # Distance (m) where approach slowing begins
+      v_linear_min: -0.6                                # Minimum linear velocity command (m/s)
+      v_linear_max: 0.8                                 # Maximum linear velocity command (m/s)
+      v_angular_min: -1.2                               # Minimum angular velocity command (rad/s)
+      v_angular_max: 1.2                                # Maximum angular velocity command (rad/s)
+      curvature_min: 0.3                                # Lower curvature limit for speed reduction
+      curvature_max: 0.5                                # Upper curvature limit for strong slowdown
+      reduction_ratio_at_high_curvature: 0.4            # Velocity scaling factor at high curvature
+      curvature_forward_dist: 0.7                       # Forward distance (m) for curvature calculation
+      curvature_backward_dist: 0.3                      # Backward distance (m) for curvature calculation
+      max_velocity_scaling_factor_rate: 0.5             # Max rate of change for velocity scaling factor
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      use_sim_time: False                               # Use simulated time for local costmap
+      update_frequency: 10.0                            # Costmap update rate (Hz)
+      publish_frequency: 5.0                            # Costmap publication rate (Hz)
+      global_frame: odom                                # Frame in which local costmap is expressed
+      robot_base_frame: gimbal_yaw_fake                 # Robot base frame used for costmap transforms
+      rolling_window: true                              # Keep costmap centered on robot
+      width: 5                                          # Width (m) of rolling local costmap
+      height: 5                                         # Height (m) of rolling local costmap
+      resolution: 0.05                                  # Cell resolution (m/pixel)
+      robot_radius: 0.35                                # Robot inflation radius (m)
+      plugins: ["static_layer", "intensity_voxel_layer", "inflation_layer"]  # List of layered costmap plugins
+      intensity_voxel_layer:
+        plugin: pb_nav2_costmap_2d::IntensityVoxelLayer # Plugin implementing voxelized intensity obstacles
+        enabled: true                                   # Whether this layer is active
+        track_unknown_space: true                       # Represent unknown cells distinctly
+        footprint_clearing_enabled: true                # Clears robot footprint
+        publish_voxel_map: false                        # Publish 3D voxel grid when true
+        combination_method: 1                           # Layer combination mode (1 = MAX)
+        mark_threshold: 0                               # Threshold for marking cells as occupied
+        origin_z: 0.0                                   # Z origin of voxel grid (m)
+        unknown_threshold: 5                            # Occupancy threshold for unknown assignment
+        z_resolution: 0.05                              # Voxel height resolution (m)
+        z_voxels: 16                                    # Number of voxels in vertical dimension
+        min_obstacle_height: 0.0                        # Minimum obstacle height considered (m)
+        max_obstacle_height: 2.0                        # Maximum obstacle height considered (m)
+        min_obstacle_intensity: 0.1                     # Minimum intensity treated as obstacle
+        max_obstacle_intensity: 2.0                     # Maximum intensity used for obstacle weighting
+        observation_sources: terrain_map                # Sensor sources feeding this layer
+        terrain_map:
+          data_type: PointCloud2                        # Message type for source data
+          # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
+          # It doesn't need to start with '/'
+          topic: <robot_namespace>/terrain_map          # Topic providing close-range terrain voxels
+          sensor_frame: front_mid360                    # Sensor frame for terrain map points
+          min_obstacle_height: 0.0                      # Minimum Z (m) for incoming points
+          max_obstacle_height: 2.0                      # Maximum Z (m) for incoming points
+          obstacle_max_range: 5.0                       # Ignore points beyond this range (m)
+          obstacle_min_range: 0.2                       # Ignore points closer than this (m)
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"          # Plugin that loads static occupancy map
+        map_subscribe_transient_local: True             # Use transient local QoS when subscribing to map
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"       # Plugin inflating obstacles
+        cost_scaling_factor: 2.5                        # How quickly cost decays with distance
+        inflation_radius: 0.9                           # Radius (m) for inflation kernel
+      always_send_full_costmap: False                   # Publish updates instead of full map each cycle
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      use_sim_time: False                               # Use simulated time for global costmap
+      update_frequency: 5.0                             # Map update rate (Hz)
+      publish_frequency: 2.0                            # Map publication rate (Hz)
+      global_frame: map                                 # Frame of global costmap
+      robot_base_frame: gimbal_yaw_fake                 # Robot frame used in costmap
+      robot_radius: 0.35                                # Robot radius used for footprint inflation (m)
+      resolution: 0.05                                  # Cell resolution (m/pixel)
+      track_unknown_space: true                         # Enable unknown space tracking
+      plugins: ["static_layer", "intensity_voxel_layer", "inflation_layer"]  # Global costmap layers
+      intensity_voxel_layer:
+        plugin: pb_nav2_costmap_2d::IntensityVoxelLayer # Voxelized obstacle layer plugin
+        enabled: true                                   # Whether layer publishes data
+        track_unknown_space: true                       # Represent unknown as separate value
+        footprint_clearing_enabled: true                # Clear robot footprint
+        publish_voxel_map: false                        # Publish 3D voxel map when true
+        combination_method: 1                           # Layer merge strategy (1 = MAX)
+        mark_threshold: 0                               # Marking threshold for obstacles
+        origin_z: 0.0                                   # Z origin of voxel grid (m)
+        unknown_threshold: 5                            # Unknown threshold for occupancy
+        z_resolution: 0.05                              # Voxel height resolution (m)
+        z_voxels: 16                                    # Number of voxels vertically
+        min_obstacle_height: 0.0                        # Minimum obstacle height (m)
+        max_obstacle_height: 2.0                        # Maximum obstacle height (m)
+        min_obstacle_intensity: 0.1                     # Minimum intensity considered obstacle
+        max_obstacle_intensity: 2.0                     # Maximum intensity used for scaling
+        observation_sources: terrain_map_ext            # Sensor sources feeding this layer
+        terrain_map_ext:
+          data_type: PointCloud2                        # Message type for extended terrain data
+          # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
+          # It doesn't need to start with '/'
+          topic: <robot_namespace>/terrain_map_ext      # Topic providing extended terrain voxels
+          sensor_frame: front_mid360                    # Sensor frame for points
+          min_obstacle_height: 0.0                      # Minimum Z (m) accepted
+          max_obstacle_height: 2.0                      # Maximum Z (m) accepted
+          obstacle_max_range: 10.0                      # Maximum sensor range (m)
+          obstacle_min_range: 0.2                       # Minimum sensor range (m)
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"          # Static occupancy grid source
+        map_subscribe_transient_local: True             # Subscription QoS to avoid losing latched map
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"       # Inflation plugin for safety buffer
+        cost_scaling_factor: 2.5                        # Cost decay rate per meter
+        inflation_radius: 0.95                          # Inflation radius (m) for global layer
+      always_send_full_costmap: False                   # Publish partial updates when possible
+
+# The yaml_filename does not need to be specified since it going to be set by defaults in launch.
+# If you'd rather set it in the yaml, remove the default "map" value in the tb3_simulation_launch.py
+# file & provide full path to map below. If CLI map configuration or launch default is provided, that will be used.
+map_server:
+  ros__parameters:
+    yaml_filename: ""                                   # Map file path (left empty to rely on launch arguments)
+
+map_saver:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulation clock while saving map
+    save_map_timeout: 5.0                               # Timeout (s) for map saving service
+    free_thresh_default: 0.25                           # Default free-space probability threshold
+    occupied_thresh_default: 0.65                       # Default occupied probability threshold
+    map_subscribe_transient_local: True                 # Use transient local QoS for map subscription
+
+planner_server:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulated time for planner
+    expected_planner_frequency: 10.0                    # Desired plan refresh rate (Hz)
+    planner_plugins: ["GridBased"]                      # IDs of planner plugins to load
+    GridBased:
+      plugin: "nav2_theta_star_planner/ThetaStarPlanner"  # Planner plugin implementation
+      how_many_corners: 8                               # Connectivity (8-way) for Theta* search
+      w_euc_cost: 1.0                                   # Weight for Euclidean distance cost
+      w_traversal_cost: 10.0                            # Weight for traversal (costmap) penalties
+      w_heuristic_cost: 1.0                             # Weight for heuristic component
+
+smoother_server:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulated time for smoother
+    smoother_plugins: ["simple_smoother"]               # List of smoother plugin IDs
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"           # Smoother plugin implementation
+      tolerance: 1.0e-10                                 # Residual tolerance for smoothing convergence
+      max_its: 1000                                     # Maximum number of smoothing iterations
+      do_refinement: True                               # Perform post-smoothing refinement
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulated time for behavior server
+    local_costmap_topic: local_costmap/costmap_raw      # Topic for local costmap data
+    global_costmap_topic: global_costmap/costmap_raw    # Topic for global costmap data
+    local_footprint_topic: local_costmap/published_footprint  # Topic publishing local footprint
+    global_footprint_topic: global_costmap/published_footprint  # Topic publishing global footprint
+    cycle_frequency: 10.0                               # Behavior server loop frequency (Hz)
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]  # List of behaviors loaded
+    spin:
+      plugin: "nav2_behaviors/Spin"                    # Plugin providing spin behavior
+    backup:
+      plugin: "pb_nav2_behaviors/BackUpFreeSpace"      # Custom backup behavior plugin
+    drive_on_heading:
+      plugin: "nav2_behaviors/DriveOnHeading"          # Plugin for straight-line drive
+    wait:
+      plugin: "nav2_behaviors/Wait"                    # Plugin for wait behavior
+    assisted_teleop:
+      plugin: "nav2_behaviors/AssistedTeleop"          # Plugin assisting teleoperation
+    local_frame: odom                                   # Frame used for local behaviors
+    global_frame: map                                   # Frame used for global behaviors
+    robot_base_frame: gimbal_yaw_fake                   # Robot base frame reference
+    transform_tolerance: 0.1                            # TF lookup tolerance (s)
+    simulate_ahead_time: 2.0                            # Time horizon (s) for motion simulation
+    max_rotational_vel: 0.8                             # Max angular velocity in behaviors (rad/s)
+    min_rotational_vel: 0.2                             # Min angular velocity (rad/s)
+    rotational_acc_lim: 1.5                             # Angular acceleration limit (rad/s^2)
+    # params for pb_nav2_behaviors/BackUpFreeSpace
+    service_name: "global_costmap/get_costmap"          # Service name used to fetch costmap for backup
+    max_radius: 2.0                                     # Maximum radius (m) checked for clearance
+    visualize: false                                    # Publish visualization markers when true
+
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulated time for waypoint follower
+    loop_rate: 20                                       # Control loop rate (Hz) for waypoint execution
+    stop_on_failure: false                              # Whether to halt when a waypoint fails
+    waypoint_task_executor_plugin: "wait_at_waypoint"   # Plugin to run when reaching waypoints
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"  # Wait behavior plugin
+      enabled: True                                     # Enable waiting at waypoints
+      waypoint_pause_duration: 200                      # Pause duration (s) at each waypoint
+
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulation clock for smoothing
+    smoothing_frequency: 20.0                           # Velocity smoothing rate (Hz)
+    scale_velocities: False                             # Scale velocities based on limits when true
+    feedback: "OPEN_LOOP"                               # Smoothing feedback mode
+    max_velocity: [0.8, 0.8, 1.2]                       # Max linear x, linear y, angular speeds
+    min_velocity: [-0.6, -0.6, -1.2]                    # Min linear x, linear y, angular speeds
+    max_accel: [1.5, 1.5, 2.0]                          # Max accelerations for x, y, and angular
+    max_decel: [-1.5, -1.5, -2.0]                       # Max decelerations for x, y, and angular
+    odom_topic: "odometry"                             # Odometry topic for feedback
+    odom_duration: 0.1                                  # Allowed age (s) for odom message
+    deadband_velocity: [0.0, 0.0, 0.0]                  # Deadband thresholds for velocity commands
+    velocity_timeout: 1.0                               # Timeout (s) before commands are considered stale
+
+pb_teleop_twist_joy_node:
+  ros__parameters:
+    use_sim_time: False                                 # Use simulated time for teleop
+    robot_base_frame: gimbal_yaw                        # Base frame used for manual control
+    control_mode: auto_control                          # Default mode (auto or manual)
+
+    require_enable_button: true                         # Require enable button to send commands
+    enable_button: 4                                    # Joystick button index enabling teleop
+    enable_turbo_button: 5                              # Button index enabling turbo mode
+
+    axis_chassis:
+      x: 1                                              # Axis index for forward/backward motion
+      y: 0                                              # Axis index for lateral motion
+      yaw: 6                                            # Axis/button index for yaw control
+    scale_chassis:
+      x: 2.5                                            # Speed scale for x axis in normal mode
+      y: 2.5                                            # Speed scale for y axis in normal mode
+      yaw: 3.0                                          # Speed scale for yaw in normal mode
+    scale_chassis_turbo:
+      x: 4.0                                            # Speed scale for x axis in turbo mode
+      y: 4.0                                            # Speed scale for y axis in turbo mode
+      yaw: 6.0                                          # Speed scale for yaw in turbo mode
+
+    axis_gimbal:
+      roll: -1                                          # Axis index for roll (negative disables)
+      pitch: 4                                          # Axis index for gimbal pitch
+      yaw: 3                                            # Axis index for gimbal yaw
+    scale_gimbal:
+      roll: 0.0                                         # Scale applied to roll commands
+      pitch: -1.0                                       # Scale applied to pitch commands
+      yaw: 2.5                                          # Scale applied to yaw commands
+    scale_gimbal_turbo:
+      roll: 0.0                                         # Turbo scale for roll commands
+      pitch: -1.5                                       # Turbo scale for pitch commands
+      yaw: 3.5                                          # Turbo scale for yaw commands
