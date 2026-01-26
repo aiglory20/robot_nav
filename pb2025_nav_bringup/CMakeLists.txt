@@ -17,6 +17,7 @@ endif()
 install(PROGRAMS
   scripts/auto_navigation.py
   scripts/get_coordinates.py
+  scripts/robot_pose_monitor.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

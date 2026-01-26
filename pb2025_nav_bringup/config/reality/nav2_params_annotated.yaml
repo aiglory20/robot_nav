@@ -2,612 +2,610 @@
 
 livox_ros_driver2:
   ros__parameters:
-    xfer_format: 4                                      # Message type selection (4 publishes PointCloud, Custom, PCL, and IMU together)
-    multi_topic: 0                                      # Whether each LiDAR gets its own topic (0 = share one topic)
-    data_src: 0                                         # Data source identifier (0 = live LiDAR hardware)
-    publish_freq: 20.0                                  # Publication rate (Hz) for outgoing data
-    output_data_type: 0                                 # Format of outgoing point clouds (0 = PointCloud2)
-    frame_id: front_mid360                              # TF frame name attached to published messages
-    user_config_path: $(find-pkg-share pb2025_nav_bringup)/config/reality/mid360_user_config.json  # Vendor JSON with sensor calibration
-    cmdline_input_bd_code: livox0000000001              # Broadcast code used to connect to this Livox unit
-    lvx_file_path: ""                                   # Optional LVX recording to replay instead of live data
+    xfer_format: 4                                      # 消息格式选择（4 表示同时发布 PointCloud, Custom, PCL 和 IMU）
+    multi_topic: 0                                      # 是否每个 LiDAR 拥有独立话题（0 = 共享一个话题）
+    data_src: 0                                         # 数据源标识符（0 = 实时 LiDAR 硬件数据）
+    publish_freq: 20.0                                  # 数据发布频率 (Hz)
+    output_data_type: 0                                 # 输出点云格式（0 = PointCloud2）
+    frame_id: front_mid360                              # 附加到发布消息上的 TF 坐标系名称
+    user_config_path: $(find-pkg-share pb2025_nav_bringup)/config/reality/mid360_user_config.json  # 包含传感器校准信息的厂商 JSON 文件路径
+    cmdline_input_bd_code: livox0000000001              # 用于连接此 Livox 单元的广播码
+    lvx_file_path: ""                                   # 可选 LVX 录制文件路径，用于回放而非实时数据
 
 point_lio:
   ros__parameters:
-    use_imu_as_input: False                             # If true, consumes IMU as primary propagation input
-    prop_at_freq_of_imu: True                           # Propagates states at IMU frequency when enabled
-    check_satu: True                                    # Enables saturation check to discard unrealistic IMU readings
-    init_map_size: 10                                   # Initial voxel map size in meters for Point-LIO
-    point_filter_num: 8                                 # Minimum number of neighboring points for feature selection
-    space_down_sample: True                             # Enables spatial downsampling before processing
-    filter_size_surf: 0.2                               # Leaf size (m) for surface points voxel filter
-    filter_size_map: 0.2                                # Leaf size (m) for map voxels
-    ivox_nearby_type: 18                                # Defines neighbor lookup (18-connectivity for IVox)
-    runtime_pos_log_enable: False                       # Toggles pose logging at runtime
+    use_imu_as_input: False                             # 如果为真，将 IMU 作为主要的传播输入
+    prop_at_freq_of_imu: True                           # 启用时，以 IMU 频率传播状态
+    check_satu: True                                    # 启用饱和度检查以丢弃不现实的 IMU 读数
+    init_map_size: 10                                   # Point-LIO 初始体素地图大小（米）
+    point_filter_num: 8                                 # 特征选择所需的最少邻近点数
+    space_down_sample: True                             # 启用处理前的空间下采样
+    filter_size_surf: 0.2                               # 表面点体素滤波器的叶大小（米）
+    filter_size_map: 0.2                                # 地图体素滤波器的叶大小（米）
+    ivox_nearby_type: 18                                # 定义邻近查找方式（IVox 使用 18-连通性）
+    runtime_pos_log_enable: False                       # 切换运行时的位姿记录
 
     common:
-      lid_topic: "livox/lidar"                         # Input LiDAR topic name
-      imu_topic: "livox/imu"                           # Input IMU topic name
-      con_frame: False                                  # Whether to merge multiple LiDAR frames before processing
-      con_frame_num: 1                                  # Number of frames to merge when con_frame is true
-      cut_frame: False                                  # Whether to split one LiDAR frame into subframes
-      cut_frame_time_interval: 0.05                     # Time gap (s) between subframes when cutting
-      time_diff_lidar_to_imu: 0.0                       # Time offset (s) applied between LiDAR and IMU stamps
+      lid_topic: "livox/lidar"                         # 输入 LiDAR 话题名称
+      imu_topic: "livox/imu"                           # 输入 IMU 话题名称
+      con_frame: False                                  # 是否在处理前合并多个 LiDAR 帧
+      con_frame_num: 1                                  # 当 con_frame 为真时，要合并的帧数
+      cut_frame: False                                  # 是否将一个 LiDAR 帧分割成子帧
+      cut_frame_time_interval: 0.05                     # 分割时子帧之间的时间间隔（秒）
+      time_diff_lidar_to_imu: 0.0                       # LiDAR 和 IMU 时间戳之间应用的时间偏移（秒）
 
     prior_pcd:
-      enable: False                                     # Enables loading of a prior point cloud map
-      # NOTE: `prior_pcd_map_path` will be provided in the launch file
+      enable: False                                     # 启用加载先验点云地图
+      # 注意：`prior_pcd_map_path` 将在启动文件中提供
       # prior_pcd_map_path: ""
-      init_pose: [ 0.0, 0.0, 0.0 ]                      # Initial pose [x,y,z] for aligning prior map
+      init_pose: [ 0.0, 0.0, 0.0 ]                      # 用于对齐先验地图的初始位姿 [x,y,z]
 
     preprocess:
-      lidar_type: 1                                     # LiDAR type identifier (1 = Livox series)
-      scan_line: 4                                      # Number of scan lines to expect from the LiDAR
-      timestamp_unit: 3                                 # Point cloud timestamp units (3 = nanoseconds)
-      blind: 0.5                                        # Blind zone radius (m) to discard near points
+      lidar_type: 1                                     # LiDAR 类型标识符（1 = Livox 系列）
+      scan_line: 4                                      # 期望从 LiDAR 接收的扫描线数
+      timestamp_unit: 3                                 # 点云时间戳单位（3 = 纳秒）
+      blind: 0.5                                        # 盲区半径（米），丢弃此范围内的近点
 
     mapping:
-      imu_en: True                                      # Enables IMU fusion in mapping
-      extrinsic_est_en: False                           # Solves for LiDAR-IMU extrinsics online when true
-      imu_time_inte: 0.005                              # IMU integration interval (s)
-      lidar_time_inte: 0.1                              # LiDAR integration interval (s)
-      satu_acc: 4.0                                     # Acceleration saturation threshold (g)
-      satu_gyro: 35.0                                   # Gyro saturation threshold (deg/s)
-      acc_norm: 1.0                                     # Expected gravity magnitude in IMU units
-      lidar_meas_cov: 0.01                              # LiDAR measurement covariance
-      acc_cov_output: 500.0                             # Output covariance for accelerometer bias
-      gyr_cov_output: 1000.0                            # Output covariance for gyro bias
-      b_acc_cov: 0.0001                                 # Process noise for accelerometer bias
-      b_gyr_cov: 0.0001                                 # Process noise for gyro bias
-      imu_meas_acc_cov: 0.1                              # IMU accelerometer measurement covariance
-      imu_meas_omg_cov: 0.1                              # IMU gyro measurement covariance
-      gyr_cov_input: 0.1                                # Input model covariance for gyro when IMU drives propagation
-      acc_cov_input: 0.1                                # Input model covariance for accelerometer when IMU drives propagation
-      plane_thr: 0.1                                    # Flatness threshold for selecting planar features
-      match_s: 81.0                                     # Number of matching points used during optimization
-      ivox_grid_resolution: 0.5                         # Size (m) of IVox grid resolution
-      gravity: [0.0, 0.0, -1.0]                         # Gravity vector expressed in IMU coordinates
-      gravity_init: [0.0, 0.0, -1.0]                    # Initial gravity guess when IMU not stationary
-      extrinsic_T: [ -0.011, -0.02329, 0.04412 ]        # LiDAR translation offset from IMU in meters
+      imu_en: True                                      # 在地图中启用 IMU 融合
+      extrinsic_est_en: False                           # 为真时在线求解 LiDAR-IMU 外参
+      imu_time_inte: 0.005                              # IMU 积分间隔（秒）
+      lidar_time_inte: 0.1                              # LiDAR 积分间隔（秒）
+      satu_acc: 4.0                                     # 加速度计饱和阈值（g）
+      satu_gyro: 35.0                                   # 陀螺仪饱和阈值（度/秒）
+      acc_norm: 1.0                                     # IMU 单位中预期的重力大小
+      lidar_meas_cov: 0.01                              # LiDAR 测量协方差
+      acc_cov_output: 500.0                             # 加速度计偏置的输出协方差
+      gyr_cov_output: 1000.0                            # 陀螺仪偏置的输出协方差
+      b_acc_cov: 0.0001                                 # 加速度计偏置的过程噪声
+      b_gyr_cov: 0.0001                                 # 陀螺仪偏置的过程噪声
+      imu_meas_acc_cov: 0.1                              # IMU 加速度计测量协方差
+      imu_meas_omg_cov: 0.1                              # IMU 陀螺仪测量协方差
+      gyr_cov_input: 0.1                                # IMU 驱动传播时陀螺仪的输入模型协方差
+      acc_cov_input: 0.1                                # IMU 驱动传播时加速度计的输入模型协方差
+      plane_thr: 0.1                                    # 选择平面特征的平坦度阈值
+      match_s: 81.0                                     # 优化过程中使用的匹配点数量
+      ivox_grid_resolution: 0.5                         # IVox 网格分辨率大小（米）
+      gravity: [0.0, 0.0, -1.0]                         # 在 IMU 坐标系中表示的重力矢量
+      gravity_init: [0.0, 0.0, -1.0]                    # IMU 非静止时的初始重力猜测
+      extrinsic_T: [ -0.011, -0.02329, 0.04412 ]        # LiDAR 相对于 IMU 的平移偏移（米）
       extrinsic_R: [ 1.0, 0.0, 0.0,
                      0.0, 1.0, 0.0,
-                     0.0, 0.0, 1.0 ]                    # LiDAR rotation relative to IMU frame (identity here)
+                     0.0, 0.0, 1.0 ]                    # LiDAR 相对于 IMU 坐标系的旋转（此处为单位矩阵）
 
     odometry:
-      publish_odometry_without_downsample: True         # Publish odom even when pointcloud is not downsampled
+      publish_odometry_without_downsample: True         # 即使点云未下采样也发布里程计
 
     publish:
-      path_en: False                                    # Enables publishing of estimated path when true
-      scan_publish_en: True                             # Enables publishing processed point clouds
-      scan_bodyframe_pub_en: False                      # Publishes scans in body frame when true
-      tf_send_en: False                                 # Publishes transform tree updates when true
+      path_en: False                                    # 为真时启用发布估计路径
+      scan_publish_en: True                             # 启用发布处理后的点云
+      scan_bodyframe_pub_en: False                      # 为真时在机体坐标系中发布扫描数据
+      tf_send_en: False                                 # 为真时发布变换树更新
 
     pcd_save:
-      pcd_save_en: False                                # Enables saving point clouds to disk
-      interval: -1                                      # Number of frames per PCD file (-1 = save all into single file)
+      pcd_save_en: False                                # 启用将点云保存到磁盘
+      interval: -1                                      # 每个 PCD 文件包含的帧数（-1 = 所有帧保存到单个文件）
 
 loam_interface:
   ros__parameters:
-    use_sim_time: False                                 # Use /clock for simulation time when true
-    state_estimation_topic: "aft_mapped_to_init"        # Input pose topic from LOAM
-    registered_scan_topic: "cloud_registered"          # Registered LiDAR scan topic name
-    odom_frame: "odom"                                 # TF frame providing odometry
-    base_frame: "base_footprint"                       # Robot base frame used by LOAM interface
-    lidar_frame: "front_mid360"                        # LiDAR frame used for transforms
+    use_sim_time: False                                 # 为真时使用 /clock 作为模拟时间
+    state_estimation_topic: "aft_mapped_to_init"        # 来自 LOAM 的输入位姿话题
+    registered_scan_topic: "cloud_registered"          # 注册后的 LiDAR 扫描话题名称
+    odom_frame: "odom"                                 # 提供里程计的 TF 坐标系
+    base_frame: "base_footprint"                       # LOAM 接口使用的机器人基座坐标系
+    lidar_frame: "front_mid360"                        # 用于变换的 LiDAR 坐标系
 
 sensor_scan_generation:
   ros__parameters:
-    use_sim_time: False                                 # Use simulation time for synthetic scan generation
-    lidar_frame: "front_mid360"                        # Source point cloud frame
-    base_frame: "base_footprint"                       # Target frame for generated scans
-    robot_base_frame: "gimbal_yaw"                     # Robot base used for TF lookups
+    use_sim_time: False                                 # 为合成扫描生成使用模拟时间
+    lidar_frame: "front_mid360"                        # 源点云坐标系
+    base_frame: "base_footprint"                       # 生成扫描的目标坐标系
+    robot_base_frame: "gimbal_yaw"                     # 用于 TF 查询的机器人基座坐标系
 
 terrain_analysis:
   ros__parameters:
-    scanVoxelSize: 0.05                 # Leaf size (m) for point cloud downsampling
-    decayTime: 0.5                      # Time (s) before points are considered stale
-    noDecayDis: 0.0                     # Distance below which decay is ignored
-    clearingDis: 0.0                    # Distance beyond which points are pruned
-    useSorting: True                    # Use percentile-based ground estimation when true
-    quantileZ: 0.2                      # Percentile threshold for ground extraction when sorting
-    considerDrop: False                 # Treat downward drops as obstacles when true
-    limitGroundLift: False              # Limit high ground lift values when true
-    maxGroundLift: 0.3                  # Maximum allowed ground lift (m)
-    clearDyObs: True                    # Remove dynamic obstacles based on temporal consistency
-    minDyObsDis: 0.3                    # Minimum distance (m) for dynamic obstacle filtering
-    minDyObsAngle: 0.0                  # Minimum angle (deg) for classifying dynamic obstacles
-    minDyObsRelZ: -0.3                  # Minimum relative height (m) considered dynamic
-    absDyObsRelZThre: 0.2               # Absolute relative height threshold for dynamics
-    minDyObsVFOV: -28.0                 # Lower vertical field-of-view bound (deg)
-    maxDyObsVFOV: 33.0                  # Upper vertical field-of-view bound (deg)
-    minDyObsPointNum: 1                 # Minimum points required to classify dynamic obstacle
-    noDataObstacle: False               # Treat unknown space as obstacle when true
-    noDataBlockSkipNum: 0               # How many unknown blocks to skip before marking obstacles
-    minBlockPointNum: 10                # Minimum points per voxel block to treat as valid
-    vehicleHeight: 0.5                  # Only points below this height (m) are processed
-    voxelPointUpdateThre: 100           # Max points allowed per voxel update cycle
-    voxelTimeUpdateThre: 1.0            # Minimum time (s) between voxel updates
-    minRelZ: -1.5                       # Minimum relative Z accepted after filtering
-    maxRelZ: 0.5                        # Maximum relative Z accepted after filtering
-    disRatioZ: 0.2                      # Scaling ratio for Z bounds versus distance
+    scanVoxelSize: 0.05                 # 点云下采样的叶大小（米）
+    decayTime: 0.5                      # 点被视为过期前的时间（秒）
+    noDecayDis: 0.0                     # 在此距离内忽略衰减
+    clearingDis: 0.0                    # 超过此距离的点将被修剪
+    useSorting: True                    # 为真时使用基于百分位数的地面估计
+    quantileZ: 0.2                      # 使用排序时用于地面提取的百分位阈值
+    considerDrop: False                 # 为真时将向下的落差视为障碍物
+    limitGroundLift: False              # 为真时限制地面的最大抬升值
+    maxGroundLift: 0.3                  # 允许的最大地面抬升（米）
+    clearDyObs: True                    # 基于时间一致性移除动态障碍物
+    minDyObsDis: 0.3                    # 动态障碍物过滤的最小距离（米）
+    minDyObsAngle: 0.0                  # 分类动态障碍物的最小角度（度）
+    minDyObsRelZ: -0.3                  # 被视为动态的最小相对高度（米）
+    absDyObsRelZThre: 0.2               # 动态识别的绝对相对高度阈值
+    minDyObsVFOV: -28.0                 # 垂直视场下界（度）
+    maxDyObsVFOV: 33.0                  # 垂直视场上界（度）
+    minDyObsPointNum: 1                 # 分类动态障碍物所需的最少点数
+    noDataObstacle: False               # 为真时将未知空间视为障碍物
+    noDataBlockSkipNum: 0               # 标记为障碍物前要跳过的未知块数量
+    minBlockPointNum: 10                # 每个体素块被视为有效所需的最少点数
+    vehicleHeight: 0.5                  # 仅处理低于此高度（米）的点
+    voxelPointUpdateThre: 100           # 每个体素更新周期允许的最大点数
+    voxelTimeUpdateThre: 1.0            # 体素更新之间的最小时隔（秒）
+    minRelZ: -1.5                       # 过滤后接受的最小相对 Z 值
+    maxRelZ: 0.5                        # 过滤后接受的最大相对 Z 值
+    disRatioZ: 0.2                      # Z 边界相对于距离的缩放比例
 
 terrain_analysis_ext:
   ros__parameters:
-    scanVoxelSize: 0.1                  # Leaf size (m) for extended terrain map
-    decayTime: 0.2                      # Time-to-live (s) for extended map points
-    noDecayDis: 0.0                     # Distance below which decay is disabled
-    clearingDis: 20.0                   # Range (m) beyond which points are cleared
-    useSorting: true                    # Use percentile ground estimation for extended map
-    quantileZ: 0.2                      # Percentile used for ground level in extended map
-    vehicleHeight: 1.0                  # Height threshold for considered points in extended map
-    voxelPointUpdateThre: 100           # Point threshold per voxel update in extended map
-    voxelTimeUpdateThre: 2.0            # Minimum seconds between voxel updates
-    lowerBoundZ: -1.5                   # Lower valid Z bound (m)
-    upperBoundZ: 0.5                    # Upper valid Z bound (m)
-    disRatioZ: 0.2                      # Scaling ratio for Z bounds vs distance
-    checkTerrainConn: False             # Evaluate terrain connectivity when true
-    terrainUnderVehicle: -0.75          # Estimated ground height directly under vehicle (m)
-    terrainConnThre: 0.5                # Threshold for considering terrain connected
-    ceilingFilteringThre: 2.0           # Height difference (m) to classify ceilings
-    localTerrainMapRadius: 4.0          # Radius (m) for local terrain map extraction
+    scanVoxelSize: 0.1                  # 扩展地形地图的叶大小（米）
+    decayTime: 0.2                      # 扩展地图点的存活时间（秒）
+    noDecayDis: 0.0                     # 在此距离内禁用衰减
+    clearingDis: 20.0                   # 超过此范围（米）的点将被清除
+    useSorting: true                    # 扩展地图使用百分位数地面估计
+    quantileZ: 0.2                      # 扩展地图中用于地面高度的百分位数
+    vehicleHeight: 1.0                  # 扩展地图中考虑点的高度阈值
+    voxelPointUpdateThre: 100           # 扩展地图中每个体素更新的点数阈值
+    voxelTimeUpdateThre: 2.0            # 体素更新之间的最小时隔（秒）
+    lowerBoundZ: -1.5                   # 有效的 Z 下界（米）
+    upperBoundZ: 0.5                    # 有效的 Z 上界（米）
+    disRatioZ: 0.2                      # Z 边界相对于距离的缩放比例
+    checkTerrainConn: False             # 为真时评估地形连通性
+    terrainUnderVehicle: -0.75          # 车辆正下方估计的地面高度（米）
+    terrainConnThre: 0.5                # 认为地形连通时的阈值
+    ceilingFilteringThre: 2.0           # 分类为天花板的高度差（米）
+    localTerrainMapRadius: 4.0          # 局部地形地图提取半径（米）
 
 fake_vel_transform:
   ros__parameters:
-    use_sim_time: False                                 # Use simulated clock for twist remapping
-    odom_topic: "odometry"                             # Source odometry topic for twist compensation
-    robot_base_frame: "gimbal_yaw"                     # Real robot frame providing motion
-    fake_robot_base_frame: "gimbal_yaw_fake"           # Virtual base frame used by Nav2
-    input_cmd_vel_topic: "cmd_vel_nav2_result"         # Command velocity input topic from Nav2
-    output_cmd_vel_topic: "cmd_vel"                    # Physical robot command velocity topic
-    cmd_spin_topic: "cmd_spin"                         # Topic for spin commands
-    init_spin_speed: 0.001                              # Initial rotational speed (rad/s) for spin alignment
+    use_sim_time: False                                 # 为速度重映射使用模拟时钟
+    odom_topic: "odometry"                             # 用于速度补偿的源里程计话题
+    robot_base_frame: "gimbal_yaw"                     # 提供运动的真实机器人坐标系
+    fake_robot_base_frame: "gimbal_yaw_fake"           # Nav2 使用的虚拟基座坐标系
+    input_cmd_vel_topic: "cmd_vel_nav2_result"         # 来自 Nav2 的命令速度输入话题
+    output_cmd_vel_topic: "cmd_vel"                    # 物理机器人命令速度话题
+    cmd_spin_topic: "cmd_spin"                         # 自旋命令话题
+    init_spin_speed: 0.001                              # 自旋对齐的初始旋转速度（弧度/秒）
 
 small_gicp_relocalization:
   ros__parameters:
-    use_sim_time: False                                 # Whether to use simulation time for relocalization
-    num_threads: 4                                      # Number of threads used by GICP matcher
-    num_neighbors: 20                                   # Nearest neighbors used per point in registration
-    global_leaf_size: 0.1                               # Voxel size (m) when loading global map
-    registered_leaf_size: 0.05                          # Voxel size (m) for incoming scans
-    max_dist_sq: 3.0                                    # Maximum squared distance (m^2) for correspondences
-    map_frame: "map"                                    # Global frame for the stored map
-    odom_frame: "odom"                                 # Intermediate odometry frame
-    base_frame: "base_footprint"                       # Robot frame used when publishing
-    robot_base_frame: "gimbal_yaw"                     # Robot base used for TF lookups
-    lidar_frame: "front_mid360"                        # LiDAR frame providing scan data
-    init_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]           # Initial pose guess [x,y,z,roll,pitch,yaw]
-    # The prior_pcd_file does not need to be specified since it going to be set by defaults in launch.
+    use_sim_time: False                                 # 重定位是否使用模拟时间
+    num_threads: 4                                      # GICP 匹配器使用的线程数
+    num_neighbors: 20                                   # 配准时每点使用的最近邻点数
+    global_leaf_size: 0.1                               # 加载全局地图时的体素大小（米）
+    registered_leaf_size: 0.05                          # 输入扫描的体素大小（米）
+    max_dist_sq: 3.0                                    # 对应点匹配的最大平方距离（米^2）
+    map_frame: "map"                                    # 存储地图的全局坐标系
+    odom_frame: "odom"                                 # 中间里程计坐标系
+    base_frame: "base_footprint"                       # 发布时使用的机器人坐标系
+    robot_base_frame: "gimbal_yaw"                     # 用于 TF 查询的机器人基座坐标系
+    lidar_frame: "front_mid360"                        # 提供扫描数据的 LiDAR 坐标系
+    init_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]           # 初始位姿猜测 [x,y,z,横滚,俯仰,偏航]
+    # prior_pcd_file 无需在此指定，因为它将由启动文件中的默认值设置。
     # prior_pcd_file: ""
 
 pointcloud_to_laserscan:
   ros__parameters:
-    use_sim_time: False                                 # Whether to use simulated time
-    target_frame: base_footprint                        # Frame for generated LaserScan
-    min_height: -0.5                                    # Minimum Z (m) included in scan
-    max_height: 6.0                                     # Maximum Z (m) included in scan
-    min_intensity: 0.1                                  # Minimum point intensity kept
-    max_intensity: 2.0                                  # Maximum point intensity kept
-    angle_min: -3.1415926                               # Lower angle limit (rad)
-    angle_max: 3.1415926                                # Upper angle limit (rad)
-    angle_increment: 0.00872665                         # Angular resolution (rad)
-    scan_time: 0.05                                     # Time (s) between scans
-    range_min: 0.3                                      # Minimum reported range (m)
-    range_max: 10.0                                     # Maximum reported range (m)
-    use_inf: true                                       # Publish +inf when no return rather than max range
+    use_sim_time: False                                 # 是否使用模拟时间
+    target_frame: base_footprint                        # 生成 LaserScan 的目标坐标系
+    min_height: -0.5                                    # 扫描中包含的最小 Z 值（米）
+    max_height: 6.0                                     # 扫描中包含的最大 Z 值（米）
+    min_intensity: 0.1                                  # 保留的最小点强度
+    max_intensity: 2.0                                  # 保留的最大点强度
+    angle_min: -3.1415926                               # 角度下限（弧度）
+    angle_max: 3.1415926                                # 角度上限（弧度）
+    angle_increment: 0.00872665                         # 角分辨率（弧度）
+    scan_time: 0.05                                     # 扫描间隔时间（秒）
+    range_min: 0.3                                      # 最小报告距离（米）
+    range_max: 10.0                                     # 最大报告距离（米）
+    use_inf: true                                       # 无返回时发布 +inf 而非最大距离
 
 slam_toolbox:
   ros__parameters:
     # https://github.com/SteveMacenski/slam_toolbox/tree/humble?#configuration
-    solver_plugin: solver_plugins::CeresSolver          # Optimization backend plugin name
-    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY         # Linear solver strategy within Ceres
-    ceres_preconditioner: SCHUR_JACOBI                  # Preconditioner for Ceres linear solver
-    ceres_trust_strategy: LEVENBERG_MARQUARDT           # Trust-region strategy used by optimizer
-    ceres_dogleg_type: TRADITIONAL_DOGLEG               # Dogleg type (unused for LM)
-    ceres_loss_function: None                           # Loss function applied to residuals
+    solver_plugin: solver_plugins::CeresSolver          # 优化后端插件名称
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY         # Ceres 内部的线性求解器策略
+    ceres_preconditioner: SCHUR_JACOBI                  # Ceres 线性求解器的预处理器
+    ceres_trust_strategy: LEVENBERG_MARQUARDT           # 优化器使用的信赖域策略
+    ceres_dogleg_type: TRADITIONAL_DOGLEG               # Dogleg 类型（LM 未使用）
+    ceres_loss_function: None                           # 应用于残差的损失函数
 
-    odom_frame: odom                                    # Frame ID for odom->base transform
-    map_frame: map                                      # Frame where the map is published
-    base_frame: base_footprint                          # Robot base frame used by SLAM
-    scan_topic: obstacle_scan                           # Input LaserScan topic
-    use_map_saver: true                                 # Enable map saver integration
-    mode: mapping                                       # Operating mode (mapping/localization/continue)
+    odom_frame: odom                                    # odom->base 变换的坐标系 ID
+    map_frame: map                                      # 地图发布的坐标系
+    base_frame: base_footprint                          # SLAM 使用的机器人基座坐标系
+    scan_topic: obstacle_scan                           # 输入 LaserScan 话题
+    use_map_saver: true                                 # 启用地图保存器集成
+    mode: mapping                                       # 操作模式（建图/定位/继续建图）
 
-    # if you'd like to immediately start continuing a map at a given pose
-    # or at the dock, but they are mutually exclusive, if pose is given
-    # will use pose
+    # 如果你想立即从给定位姿或坞站继续建图，注意它们是互斥的，如果给定位姿则使用位姿
     # map_file_name: test_steve
     # map_start_pose: [0.0, 0.0, 0.0]
     # map_start_at_dock: true
 
-    debug_logging: false                                # Enable verbose debugging logs
-    throttle_scans: 1                                   # Process every scan (>=1 means every nth scan)
-    scan_queue_size: 10                                 # Queue length for incoming scans
-    transform_publish_period: 0.0                       # Interval (s) for SLAM TF publication (0=never)
-    map_update_interval: 0.5                            # Seconds between map updates
-    resolution: 0.05                                    # Map resolution (m/cell)
-    min_laser_range: 0.3                                # Minimum LiDAR range used for mapping (m)
-    max_laser_range: 10.0                               # Maximum LiDAR range used for mapping (m)
-    minimum_time_interval: 0.2                          # Minimum delta time between processed scans (s)
-    transform_timeout: 0.2                              # TF lookup timeout (s)
-    tf_buffer_duration: 10.                             # Duration (s) of TF buffer
-    stack_size_to_use: 40000000                         # Thread stack size (bytes) required for serialization
-    enable_interactive_mode: true                       # Allow interactive map editing via RViz
+    debug_logging: false                                # 启用详细调试日志
+    throttle_scans: 1                                   # 处理扫描的频率（>=1 表示每第 n 次扫描）
+    scan_queue_size: 10                                 # 输入扫描的队列长度
+    transform_publish_period: 0.0                       # SLAM TF 发布的间隔（秒）（0=从不发布）
+    map_update_interval: 0.5                            # 地图更新间隔（秒）
+    resolution: 0.05                                    # 地图分辨率（米/单元格）
+    min_laser_range: 0.3                                # 用于建图的最小 LiDAR 距离（米）
+    max_laser_range: 10.0                               # 用于建图的最大 LiDAR 距离（米）
+    minimum_time_interval: 0.2                          # 处理扫描之间的最小时间间隔（秒）
+    transform_timeout: 0.2                              # TF 查询超时时间（秒）
+    tf_buffer_duration: 10.                             # TF 缓冲区持续时间（秒）
+    stack_size_to_use: 40000000                         # 序列化所需的线程栈大小（字节）
+    enable_interactive_mode: true                       # 允许通过 RViz 进行交互式地图编辑
 
-    # General Parameters
-    use_scan_matching: false                            # Match scans vs map (false favors odom)
-    use_scan_barycenter: true                           # Use scan centroid to reduce noise
-    minimum_travel_distance: 0.1                        # Minimum distance (m) to process new scan
-    minimum_travel_heading: 0.1                         # Minimum heading change (rad) to process new scan
-    scan_buffer_size: 10                                # Number of scans kept in buffer
-    scan_buffer_maximum_scan_distance: 10.0             # Max scan-to-scan distance (m)
-    link_match_minimum_response_fine: 0.1               # Minimum response for fine matcher link
-    link_scan_maximum_distance: 1.5                     # Max distance (m) between linked scans
-    loop_search_maximum_distance: 3.0                   # Max distance (m) when searching for loop closures
-    do_loop_closing: false                              # Whether to perform loop closure correction
-    loop_match_minimum_chain_size: 10                   # Minimum scans in loop closure chain
-    loop_match_maximum_variance_coarse: 3.0             # Maximum coarse variance allowed for loop closure
-    loop_match_minimum_response_coarse: 0.35            # Minimum coarse response for loop closure
-    loop_match_minimum_response_fine: 0.45              # Minimum fine response for loop closure
+    # 通用参数
+    use_scan_matching: false                            # 将扫描与地图匹配（false 倾向于里程计）
+    use_scan_barycenter: true                           # 使用扫描质心来减少噪声
+    minimum_travel_distance: 0.1                        # 处理新扫描所需的最小移动距离（米）
+    minimum_travel_heading: 0.1                         # 处理新扫描所需的最小航向变化（弧度）
+    scan_buffer_size: 10                                # 缓冲区中保留的扫描数量
+    scan_buffer_maximum_scan_distance: 10.0             # 最大扫描间距离（米）
+    link_match_minimum_response_fine: 0.1               # 精细匹配器链接的最小响应值
+    link_scan_maximum_distance: 1.5                     # 链接扫描之间的最大距离（米）
+    loop_search_maximum_distance: 3.0                   # 搜索闭环时的最大距离（米）
+    do_loop_closing: false                              # 是否执行闭环校正
+    loop_match_minimum_chain_size: 10                   # 闭环链中的最小扫描数
+    loop_match_maximum_variance_coarse: 3.0             # 闭环允许的最大粗方差
+    loop_match_minimum_response_coarse: 0.35            # 闭环的最小粗响应值
+    loop_match_minimum_response_fine: 0.45              # 闭环的最小精细响应值
 
-    # Correlation Parameters - Correlation Parameters
-    correlation_search_space_dimension: 0.5             # Search space width (m) for correlation
-    correlation_search_space_resolution: 0.01           # Step size (m) within search space
-    correlation_search_space_smear_deviation: 0.1       # Gaussian smear deviation for correlation
+    # 相关性参数 - 相关性参数
+    correlation_search_space_dimension: 0.5             # 相关性搜索空间的宽度（米）
+    correlation_search_space_resolution: 0.01           # 搜索空间内的步长（米）
+    correlation_search_space_smear_deviation: 0.1       # 相关性的高斯模糊偏差
 
-    # Correlation Parameters - Loop Closure Parameters
-    loop_search_space_dimension: 8.0                    # Width (m) of loop closure search space
-    loop_search_space_resolution: 0.05                  # Step size (m) for loop closure search
-    loop_search_space_smear_deviation: 0.03             # Smear deviation for loop closure search
+    # 相关性参数 - 闭环参数
+    loop_search_space_dimension: 8.0                    # 闭环搜索空间的宽度（米）
+    loop_search_space_resolution: 0.05                  # 闭环搜索的步长（米）
+    loop_search_space_smear_deviation: 0.03             # 闭环搜索的模糊偏差
 
-    # Scan Matcher Parameters
-    distance_variance_penalty: 5.5                      # Penalty weight for translational error
-    angle_variance_penalty: 5.0                         # Penalty weight for rotational error
+    # 扫描匹配器参数
+    distance_variance_penalty: 5.5                      # 平移误差的惩罚权重
+    angle_variance_penalty: 5.0                         # 旋转误差的惩罚权重
 
-    fine_search_angle_offset: 0.00349                   # Angular window (rad) for fine search
-    coarse_search_angle_offset: 0.349                   # Angular window (rad) for coarse search
-    coarse_angle_resolution: 0.0349                     # Angular resolution (rad) for coarse search
-    minimum_angle_penalty: 0.9                          # Minimum penalty applied to angles
-    minimum_distance_penalty: 0.5                       # Minimum penalty applied to distances
-    use_response_expansion: true                        # Expand search around best responses
+    fine_search_angle_offset: 0.00349                   # 精细搜索的角度窗口（弧度）
+    coarse_search_angle_offset: 0.349                   # 粗搜索的角度窗口（弧度）
+    coarse_angle_resolution: 0.0349                     # 粗搜索的角分辨率（弧度）
+    minimum_angle_penalty: 0.9                          # 应用于角度的最小惩罚
+    minimum_distance_penalty: 0.5                       # 应用于距离的最小惩罚
+    use_response_expansion: true                        # 围绕最佳响应扩展搜索
 
 bt_navigator:
   ros__parameters:
-    use_sim_time: False                                 # Whether BT Navigator uses simulation time
-    global_frame: map                                   # Global frame for goals and results
-    robot_base_frame: gimbal_yaw_fake                   # Robot base frame used by BT
-    odom_topic: odometry                                # Odometry topic feeding BT Navigator
-    bt_loop_duration: 10                                # Behavior tree tick period (ms)
-    default_server_timeout: 100                         # Default timeout (ms) for BT service calls
-    wait_for_service_timeout: 1000                      # Timeout (ms) when waiting for action servers
-    default_nav_to_pose_bt_xml: $(find-pkg-share pb2025_nav_bringup)/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml  # Default BT for single goal navigation
-    default_nav_through_poses_bt_xml: $(find-pkg-share pb2025_nav_bringup)/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml  # Default BT for waypoint navigation
-    plugin_lib_names:                                   # Behavior tree node plugins to load
-      - nav2_compute_path_to_pose_action_bt_node        # Action node for path computation
-      - nav2_compute_path_through_poses_action_bt_node  # Action node for multi-pose paths
-      - nav2_smooth_path_action_bt_node                 # Action node that smooths paths
-      - nav2_follow_path_action_bt_node                 # Action node for controller execution
-      - nav2_spin_action_bt_node                        # Action node to spin robot
-      - nav2_wait_action_bt_node                        # Action node to wait
-      - nav2_assisted_teleop_action_bt_node             # Action node for assisted teleop
-      - nav2_back_up_action_bt_node                     # Action node to back up robot
-      - nav2_drive_on_heading_bt_node                   # Action node to drive straight
-      - nav2_clear_costmap_service_bt_node              # Service call to clear costmaps
-      - nav2_is_stuck_condition_bt_node                 # Condition node for stuck detection
-      - nav2_goal_reached_condition_bt_node             # Condition for goal reached
-      - nav2_goal_updated_condition_bt_node             # Condition for goal updates
-      - nav2_globally_updated_goal_condition_bt_node    # Condition for global goal updates
-      - nav2_is_path_valid_condition_bt_node            # Condition verifying path validity
-      - nav2_initial_pose_received_condition_bt_node    # Condition for initial pose availability
-      - nav2_reinitialize_global_localization_service_bt_node  # Service to reset localization
-      - nav2_rate_controller_bt_node                    # Rate controller decorator node
-      - nav2_distance_controller_bt_node                # Distance-based decorator node
-      - nav2_speed_controller_bt_node                   # Speed-based decorator node
-      - nav2_truncate_path_action_bt_node               # Action trimming path segments
-      - nav2_truncate_path_local_action_bt_node         # Local path truncation action
-      - nav2_goal_updater_node_bt_node                  # Goal update action node
-      - nav2_recovery_node_bt_node                      # Recovery behavior sequence
-      - nav2_pipeline_sequence_bt_node                  # Pipeline composite node
-      - nav2_round_robin_node_bt_node                   # Round-robin composite node
-      - nav2_transform_available_condition_bt_node      # Condition verifying TF availability
-      - nav2_time_expired_condition_bt_node             # Condition checking timeouts
-      - nav2_path_expiring_timer_condition              # Condition for path expiring timer
-      - nav2_distance_traveled_condition_bt_node        # Condition on traveled distance
-      - nav2_single_trigger_bt_node                     # Single trigger decorator
-      - nav2_goal_updated_controller_bt_node            # Controller-specific goal update
-      - nav2_is_battery_low_condition_bt_node           # Battery status condition
-      - nav2_navigate_through_poses_action_bt_node      # Action for multi-pose navigation
-      - nav2_navigate_to_pose_action_bt_node            # Action for single pose navigation
-      - nav2_remove_passed_goals_action_bt_node         # Action removing visited goals
-      - nav2_planner_selector_bt_node                   # Selector for planner plugins
-      - nav2_controller_selector_bt_node                # Selector for controller plugins
-      - nav2_goal_checker_selector_bt_node              # Selector for goal checkers
-      - nav2_controller_cancel_bt_node                  # Action to cancel controller
-      - nav2_path_longer_on_approach_bt_node            # Condition on path length increase
-      - nav2_wait_cancel_bt_node                        # Action to cancel wait behavior
-      - nav2_spin_cancel_bt_node                        # Action to cancel spin behavior
-      - nav2_back_up_cancel_bt_node                     # Action to cancel backup behavior
-      - nav2_assisted_teleop_cancel_bt_node             # Action to cancel assisted teleop
-      - nav2_drive_on_heading_cancel_bt_node            # Action to cancel drive-on-heading
-      - nav2_is_battery_charging_condition_bt_node      # Condition for charging status
+    use_sim_time: False                                 # BT Navigator 是否使用模拟时间
+    global_frame: map                                   # 目标和结果的全局坐标系
+    robot_base_frame: gimbal_yaw_fake                   # BT 使用的机器人基座坐标系
+    odom_topic: odometry                                # 向 BT Navigator 提供数据的里程计话题
+    bt_loop_duration: 10                                # 行为树 tick 周期（毫秒）
+    default_server_timeout: 100                         # BT 服务调用的默认超时（毫秒）
+    wait_for_service_timeout: 1000                      # 等待动作服务器时的超时时间（毫秒）
+    default_nav_to_pose_bt_xml: $(find-pkg-share pb2025_nav_bringup)/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml  # 单目标导航的默认 BT
+    default_nav_through_poses_bt_xml: $(find-pkg-share pb2025_nav_bringup)/behavior_trees/navigate_through_poses_w_replanning_and_recovery.xml  # 路径点导航的默认 BT
+    plugin_lib_names:                                   # 要加载的行为树节点插件列表
+      - nav2_compute_path_to_pose_action_bt_node        # 路径计算的动作节点
+      - nav2_compute_path_through_poses_action_bt_node  # 多目标路径的动作节点
+      - nav2_smooth_path_action_bt_node                 # 平滑路径的动作节点
+      - nav2_follow_path_action_bt_node                 # 控制器执行的动作节点
+      - nav2_spin_action_bt_node                        # 旋转机器人的动作节点
+      - nav2_wait_action_bt_node                        # 等待的动作节点
+      - nav2_assisted_teleop_action_bt_node             # 辅助遥操作的动作节点
+      - nav2_back_up_action_bt_node                     # 机器人后退的动作节点
+      - nav2_drive_on_heading_bt_node                   # 直线行驶的动作节点
+      - nav2_clear_costmap_service_bt_node              # 清除代价地图的服务调用节点
+      - nav2_is_stuck_condition_bt_node                 # 卡住检测的条件节点
+      - nav2_goal_reached_condition_bt_node             # 目标达成的条件节点
+      - nav2_goal_updated_condition_bt_node             # 目标更新的条件节点
+      - nav2_globally_updated_goal_condition_bt_node    # 全局目标更新的条件节点
+      - nav2_is_path_valid_condition_bt_node            # 验证路径有效性的条件节点
+      - nav2_initial_pose_received_condition_bt_node    # 初始位姿可用性的条件节点
+      - nav2_reinitialize_global_localization_service_bt_node  # 重置定位的服务节点
+      - nav2_rate_controller_bt_node                    # 速率控制器装饰器节点
+      - nav2_distance_controller_bt_node                # 基于距离的装饰器节点
+      - nav2_speed_controller_bt_node                   # 基于速度的装饰器节点
+      - nav2_truncate_path_action_bt_node               # 修剪路径段的动作节点
+      - nav2_truncate_path_local_action_bt_node         # 局部路径修剪动作节点
+      - nav2_goal_updater_node_bt_node                  # 目标更新的动作节点
+      - nav2_recovery_node_bt_node                      # 恢复行为序列节点
+      - nav2_pipeline_sequence_bt_node                  # 管道组合节点
+      - nav2_round_robin_node_bt_node                   # 轮询组合节点
+      - nav2_transform_available_condition_bt_node      # 验证 TF 可用性的条件节点
+      - nav2_time_expired_condition_bt_node             # 检查超时的条件节点
+      - nav2_path_expiring_timer_condition              # 路径过期定时器的条件节点
+      - nav2_distance_traveled_condition_bt_node        # 行驶距离的条件节点
+      - nav2_single_trigger_bt_node                     # 单次触发装饰器节点
+      - nav2_goal_updated_controller_bt_node            # 控制器特定的目标更新节点
+      - nav2_is_battery_low_condition_bt_node           # 电池状态条件节点
+      - nav2_navigate_through_poses_action_bt_node      # 多目标导航的动作节点
+      - nav2_navigate_to_pose_action_bt_node            # 单目标导航的动作节点
+      - nav2_remove_passed_goals_action_bt_node         # 移除已访问目标的动作节点
+      - nav2_planner_selector_bt_node                   # 规划器插件的选择器节点
+      - nav2_controller_selector_bt_node                # 控制器插件的选择器节点
+      - nav2_goal_checker_selector_bt_node              # 目标检查器的选择器节点
+      - nav2_controller_cancel_bt_node                  # 取消控制器的动作节点
+      - nav2_path_longer_on_approach_bt_node            # 路径长度增加的条件节点
+      - nav2_wait_cancel_bt_node                        # 取消等待行为的动作节点
+      - nav2_spin_cancel_bt_node                        # 取消旋转行为的动作节点
+      - nav2_back_up_cancel_bt_node                     # 取消后退行为的动作节点
+      - nav2_assisted_teleop_cancel_bt_node             # 取消辅助遥操作的动作节点
+      - nav2_drive_on_heading_cancel_bt_node            # 取消直线行驶行为的动作节点
+      - nav2_is_battery_charging_condition_bt_node      # 充电状态的条件节点
 
 controller_server:
   ros__parameters:
-    use_sim_time: False                                 # Use simulation time for controller server
-    odom_topic: odometry                                # Odometry source for controller feedback
-    controller_frequency: 20.0                          # Control loop frequency (Hz)
-    min_x_velocity_threshold: 0.001                     # Threshold to treat x velocity as zero
-    min_y_velocity_threshold: 0.001                     # Threshold to treat y velocity as zero
-    min_theta_velocity_threshold: 0.001                 # Threshold to treat angular velocity as zero
-    failure_tolerance: 0.3                              # Allowable deviation (m) before aborting
-    progress_checker_plugins: ["progress_checker"]     # List of progress checker plugin IDs
-    goal_checker_plugins: ["general_goal_checker"]     # List of goal checker plugin IDs
-    controller_plugins: ["FollowPath"]                 # Controller plugin IDs loaded
+    use_sim_time: False                                 # 控制器服务器使用模拟时间
+    odom_topic: odometry                                # 控制器反馈的里程计源
+    controller_frequency: 20.0                          # 控制循环频率 (Hz)
+    min_x_velocity_threshold: 0.001                     # 将 X 速度视为零的阈值
+    min_y_velocity_threshold: 0.001                     # 将 Y 速度视为零的阈值
+    min_theta_velocity_threshold: 0.001                 # 将角速度视为零的阈值
+    failure_tolerance: 0.3                              # 终止前允许的偏差（米）
+    progress_checker_plugins: ["progress_checker"]     # 进度检查器插件 ID 列表
+    goal_checker_plugins: ["general_goal_checker"]     # 目标检查器插件 ID 列表
+    controller_plugins: ["FollowPath"]                 # 加载的控制器插件 ID 列表
     progress_checker:
-      plugin: "nav2_controller::SimpleProgressChecker" # Progress checker plugin class
-      required_movement_radius: 0.5                     # Required movement radius (m) to consider progress
-      movement_time_allowance: 10.0                     # Allowed time (s) without progress
+      plugin: "nav2_controller::SimpleProgressChecker" # 进度检查器插件类
+      required_movement_radius: 0.5                     # 认为有进展所需的最小移动半径（米）
+      movement_time_allowance: 10.0                     # 允许无进展的时间（秒）
     general_goal_checker:
-      stateful: True                                    # Maintain state between goal checks
-      plugin: "nav2_controller::SimpleGoalChecker"      # Goal checker plugin class
-      xy_goal_tolerance: 0.12                           # Positional tolerance (m)
-      yaw_goal_tolerance: 0.35                          # Heading tolerance (rad)
+      stateful: True                                    # 在目标检查之间保持状态
+      plugin: "nav2_controller::SimpleGoalChecker"      # 目标检查器插件类
+      xy_goal_tolerance: 0.12                           # 位置容差（米）
+      yaw_goal_tolerance: 0.35                          # 航向容差（弧度）
     FollowPath:
-      plugin: "pb_omni_pid_pursuit_controller::OmniPidPursuitController"  # Controller plugin implementation
-      translation_kp: 1.6                                # Proportional gain for translation
-      translation_ki: 0.05                              # Integral gain for translation
-      translation_kd: 0.15                              # Derivative gain for translation
-      enable_rotation: false                            # Whether controller handles rotation
-      rotation_kp: 1.5                                  # Proportional gain for rotation
-      rotation_ki: 0.05                                 # Integral gain for rotation
-      rotation_kd: 0.2                                  # Derivative gain for rotation
-      transform_tolerance: 0.1                          # TF tolerance (s) when querying transforms
-      min_max_sum_error: 1.0                            # Clamp integral term magnitude
-      lookahead_dist: 0.8                               # Pure pursuit lookahead distance (m)
-      use_velocity_scaled_lookahead_dist: true          # Scale lookahead with speed
-      lookahead_time: 0.6                               # Lookahead time (s) when scaling by velocity
-      min_lookahead_dist: 0.35                          # Minimum allowable lookahead distance (m)
-      max_lookahead_dist: 0.8                           # Maximum allowable lookahead distance (m)
-      use_interpolation: false                          # Interpolate between path points when true
-      use_rotate_to_heading: false                      # Rotate-to-heading behavior near goal
-      use_rotate_to_heading_treshold: 0.1               # Velocity threshold for rotate-to-heading transition
-      min_approach_linear_velocity: 0.05                # Minimum speed near goal (m/s)
-      approach_velocity_scaling_dist: 0.5               # Distance (m) where approach slowing begins
-      v_linear_min: -0.6                                # Minimum linear velocity command (m/s)
-      v_linear_max: 0.8                                 # Maximum linear velocity command (m/s)
-      v_angular_min: -1.2                               # Minimum angular velocity command (rad/s)
-      v_angular_max: 1.2                                # Maximum angular velocity command (rad/s)
-      curvature_min: 0.3                                # Lower curvature limit for speed reduction
-      curvature_max: 0.5                                # Upper curvature limit for strong slowdown
-      reduction_ratio_at_high_curvature: 0.4            # Velocity scaling factor at high curvature
-      curvature_forward_dist: 0.7                       # Forward distance (m) for curvature calculation
-      curvature_backward_dist: 0.3                      # Backward distance (m) for curvature calculation
-      max_velocity_scaling_factor_rate: 0.5             # Max rate of change for velocity scaling factor
+      plugin: "pb_omni_pid_pursuit_controller::OmniPidPursuitController"  # 控制器插件实现
+      translation_kp: 1.6                                # 平移的比例增益
+      translation_ki: 0.05                              # 平移的积分增益
+      translation_kd: 0.15                              # 平移的微分增益
+      enable_rotation: false                            # 控制器是否处理旋转
+      rotation_kp: 1.5                                  # 旋转的比例增益
+      rotation_ki: 0.05                                 # 旋转的积分增益
+      rotation_kd: 0.2                                  # 旋转的微分增益
+      transform_tolerance: 0.1                          # 查询变换时的 TF 容差（秒）
+      min_max_sum_error: 1.0                            # 积分项大小的钳位值
+      lookahead_dist: 0.8                               # 纯追踪前视距离（米）
+      use_velocity_scaled_lookahead_dist: true          # 根据速度缩放前视距离
+      lookahead_time: 0.6                               # 根据速度缩放前视距离时的时间（秒）
+      min_lookahead_dist: 0.35                          # 允许的最小前视距离（米）
+      max_lookahead_dist: 0.8                           # 允许的最大前视距离（米）
+      use_interpolation: false                          # 为真时在路径点之间插值
+      use_rotate_to_heading: false                      # 接近目标时的旋转对准航向行为
+      use_rotate_to_heading_treshold: 0.1               # 切换到旋转对准航向的速度阈值
+      min_approach_linear_velocity: 0.05                # 接近目标时的最小速度（米/秒）
+      approach_velocity_scaling_dist: 0.5               # 开始减速的接近距离（米）
+      v_linear_min: -0.6                                # 最小线速度命令（米/秒）
+      v_linear_max: 0.8                                 # 最大线速度命令（米/秒）
+      v_angular_min: -1.2                               # 最小角速度命令（弧度/秒）
+      v_angular_max: 1.2                                # 最大角速度命令（弧度/秒）
+      curvature_min: 0.3                                # 速度降低的曲率下限
+      curvature_max: 0.5                                # 强烈减速的曲率上限
+      reduction_ratio_at_high_curvature: 0.4            # 高曲率时的速度缩放因子
+      curvature_forward_dist: 0.7                       # 计算曲率的前向距离（米）
+      curvature_backward_dist: 0.3                      # 计算曲率的后向距离（米）
+      max_velocity_scaling_factor_rate: 0.5             # 速度缩放因子变化的最大速率
 
 local_costmap:
   local_costmap:
     ros__parameters:
-      use_sim_time: False                               # Use simulated time for local costmap
-      update_frequency: 10.0                            # Costmap update rate (Hz)
-      publish_frequency: 5.0                            # Costmap publication rate (Hz)
-      global_frame: odom                                # Frame in which local costmap is expressed
-      robot_base_frame: gimbal_yaw_fake                 # Robot base frame used for costmap transforms
-      rolling_window: true                              # Keep costmap centered on robot
-      width: 5                                          # Width (m) of rolling local costmap
-      height: 5                                         # Height (m) of rolling local costmap
-      resolution: 0.05                                  # Cell resolution (m/pixel)
-      robot_radius: 0.35                                # Robot inflation radius (m)
-      plugins: ["static_layer", "intensity_voxel_layer", "inflation_layer"]  # List of layered costmap plugins
+      use_sim_time: False                               # 局部代价地图使用模拟时间
+      update_frequency: 10.0                            # 代价地图更新频率 (Hz)
+      publish_frequency: 5.0                            # 代价地图发布频率 (Hz)
+      global_frame: odom                                # 局部代价地图所表达的坐标系
+      robot_base_frame: gimbal_yaw_fake                 # 用于代价地图变换的机器人基座坐标系
+      rolling_window: true                              # 使代价地图保持在机器人中心
+      width: 5                                          # 滚动物窗口局部代价地图的宽度（米）
+      height: 5                                         # 滚动物窗口局部代价地图的高度（米）
+      resolution: 0.05                                  # 单元格分辨率（米/像素）
+      robot_radius: 0.35                                # 机器人膨胀半径（米）
+      plugins: ["static_layer", "intensity_voxel_layer", "inflation_layer"]  # 分层代价地图插件列表
       intensity_voxel_layer:
-        plugin: pb_nav2_costmap_2d::IntensityVoxelLayer # Plugin implementing voxelized intensity obstacles
-        enabled: true                                   # Whether this layer is active
-        track_unknown_space: true                       # Represent unknown cells distinctly
-        footprint_clearing_enabled: true                # Clears robot footprint
-        publish_voxel_map: false                        # Publish 3D voxel grid when true
-        combination_method: 1                           # Layer combination mode (1 = MAX)
-        mark_threshold: 0                               # Threshold for marking cells as occupied
-        origin_z: 0.0                                   # Z origin of voxel grid (m)
-        unknown_threshold: 5                            # Occupancy threshold for unknown assignment
-        z_resolution: 0.05                              # Voxel height resolution (m)
-        z_voxels: 16                                    # Number of voxels in vertical dimension
-        min_obstacle_height: 0.0                        # Minimum obstacle height considered (m)
-        max_obstacle_height: 2.0                        # Maximum obstacle height considered (m)
-        min_obstacle_intensity: 0.1                     # Minimum intensity treated as obstacle
-        max_obstacle_intensity: 2.0                     # Maximum intensity used for obstacle weighting
-        observation_sources: terrain_map                # Sensor sources feeding this layer
+        plugin: pb_nav2_costmap_2d::IntensityVoxelLayer # 实现体素化强度障碍物的插件
+        enabled: true                                   # 此层是否激活
+        track_unknown_space: true                       # 将未知单元格单独表示
+        footprint_clearing_enabled: true                # 清除机器人轮廓
+        publish_voxel_map: false                        # 为真时发布 3D 体素网格
+        combination_method: 1                           # 图层合并模式（1 = 取最大值）
+        mark_threshold: 0                               # 将单元格标记为占据的阈值
+        origin_z: 0.0                                   # 体素网格的 Z 原点（米）
+        unknown_threshold: 5                            # 分配为未知的占据阈值
+        z_resolution: 0.05                              # 体素高度分辨率（米）
+        z_voxels: 16                                    # 垂直方向上的体素数
+        min_obstacle_height: 0.0                        # 考虑的最小障碍物高度（米）
+        max_obstacle_height: 2.0                        # 考虑的最大障碍物高度（米）
+        min_obstacle_intensity: 0.1                     # 视为障碍物的最小强度
+        max_obstacle_intensity: 2.0                     # 用于障碍物加权的最大强度
+        observation_sources: terrain_map                # 为此层提供数据的传感器源
         terrain_map:
-          data_type: PointCloud2                        # Message type for source data
-          # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
-          # It doesn't need to start with '/'
-          topic: <robot_namespace>/terrain_map          # Topic providing close-range terrain voxels
-          sensor_frame: front_mid360                    # Sensor frame for terrain map points
-          min_obstacle_height: 0.0                      # Minimum Z (m) for incoming points
-          max_obstacle_height: 2.0                      # Maximum Z (m) for incoming points
-          obstacle_max_range: 5.0                       # Ignore points beyond this range (m)
-          obstacle_min_range: 0.2                       # Ignore points closer than this (m)
+          data_type: PointCloud2                        # 源数据的消息类型
+          # '<robot_namespace>' 关键字应替换为用户定义的 'namespace'。
+          # 开头不需要 '/'
+          topic: <robot_namespace>/terrain_map          # 提供近程地形体素的话题
+          sensor_frame: front_mid360                    # 地形地图点的传感器坐标系
+          min_obstacle_height: 0.0                      # 输入点的最小 Z 值（米）
+          max_obstacle_height: 2.0                      # 输入点的最大 Z 值（米）
+          obstacle_max_range: 5.0                       # 忽略超出此范围的点（米）
+          obstacle_min_range: 0.2                       # 忽略比此更近的点（米）
       static_layer:
-        plugin: "nav2_costmap_2d::StaticLayer"          # Plugin that loads static occupancy map
-        map_subscribe_transient_local: True             # Use transient local QoS when subscribing to map
+        plugin: "nav2_costmap_2d::StaticLayer"          # 加载静态占据地图的插件
+        map_subscribe_transient_local: True             # 订阅地图时使用 transient local QoS
       inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"       # Plugin inflating obstacles
-        cost_scaling_factor: 2.5                        # How quickly cost decays with distance
-        inflation_radius: 0.9                           # Radius (m) for inflation kernel
-      always_send_full_costmap: False                   # Publish updates instead of full map each cycle
+        plugin: "nav2_costmap_2d::InflationLayer"       # 膨胀障碍物的插件
+        cost_scaling_factor: 2.5                        # 成本随距离衰减的速度
+        inflation_radius: 0.9                           # 膨胀核的半径（米）
+      always_send_full_costmap: False                   # 发布更新而非每个周期的完整地图
 
 global_costmap:
   global_costmap:
     ros__parameters:
-      use_sim_time: False                               # Use simulated time for global costmap
-      update_frequency: 5.0                             # Map update rate (Hz)
-      publish_frequency: 2.0                            # Map publication rate (Hz)
-      global_frame: map                                 # Frame of global costmap
-      robot_base_frame: gimbal_yaw_fake                 # Robot frame used in costmap
-      robot_radius: 0.35                                # Robot radius used for footprint inflation (m)
-      resolution: 0.05                                  # Cell resolution (m/pixel)
-      track_unknown_space: true                         # Enable unknown space tracking
-      plugins: ["static_layer", "intensity_voxel_layer", "inflation_layer"]  # Global costmap layers
+      use_sim_time: False                               # 全局代价地图使用模拟时间
+      update_frequency: 5.0                             # 地图更新频率 (Hz)
+      publish_frequency: 2.0                            # 地图发布频率 (Hz)
+      global_frame: map                                 # 全局代价地图的坐标系
+      robot_base_frame: gimbal_yaw_fake                 # 代价地图中使用的机器人坐标系
+      robot_radius: 0.35                                # 用于轮廓膨胀的机器人半径（米）
+      resolution: 0.05                                  # 单元格分辨率（米/像素）
+      track_unknown_space: true                         # 启用未知空间追踪
+      plugins: ["static_layer", "intensity_voxel_layer", "inflation_layer"]  # 全局代价地图图层
       intensity_voxel_layer:
-        plugin: pb_nav2_costmap_2d::IntensityVoxelLayer # Voxelized obstacle layer plugin
-        enabled: true                                   # Whether layer publishes data
-        track_unknown_space: true                       # Represent unknown as separate value
-        footprint_clearing_enabled: true                # Clear robot footprint
-        publish_voxel_map: false                        # Publish 3D voxel map when true
-        combination_method: 1                           # Layer merge strategy (1 = MAX)
-        mark_threshold: 0                               # Marking threshold for obstacles
-        origin_z: 0.0                                   # Z origin of voxel grid (m)
-        unknown_threshold: 5                            # Unknown threshold for occupancy
-        z_resolution: 0.05                              # Voxel height resolution (m)
-        z_voxels: 16                                    # Number of voxels vertically
-        min_obstacle_height: 0.0                        # Minimum obstacle height (m)
-        max_obstacle_height: 2.0                        # Maximum obstacle height (m)
-        min_obstacle_intensity: 0.1                     # Minimum intensity considered obstacle
-        max_obstacle_intensity: 2.0                     # Maximum intensity used for scaling
-        observation_sources: terrain_map_ext            # Sensor sources feeding this layer
+        plugin: pb_nav2_costmap_2d::IntensityVoxelLayer # 体素化障碍物图层插件
+        enabled: true                                   # 此层是否发布数据
+        track_unknown_space: true                       # 将未知表示为独立值
+        footprint_clearing_enabled: true                # 清除机器人轮廓
+        publish_voxel_map: false                        # 为真时发布 3D 体素地图
+        combination_method: 1                           # 图层合并策略（1 = 取最大值）
+        mark_threshold: 0                               # 障碍物标记阈值
+        origin_z: 0.0                                   # 体素网格的 Z 原点（米）
+        unknown_threshold: 5                            # 未知的占据阈值
+        z_resolution: 0.05                              # 体素高度分辨率（米）
+        z_voxels: 16                                    # 垂直方向上的体素数
+        min_obstacle_height: 0.0                        # 最小障碍物高度（米）
+        max_obstacle_height: 2.0                        # 最大障碍物高度（米）
+        min_obstacle_intensity: 0.1                     # 视为障碍物的最小强度
+        max_obstacle_intensity: 2.0                     # 用于缩放的最大强度
+        observation_sources: terrain_map_ext            # 为此层提供数据的传感器源
         terrain_map_ext:
-          data_type: PointCloud2                        # Message type for extended terrain data
-          # '<robot_namespace>' keyword shall be replaced with 'namespace' where user defined.
-          # It doesn't need to start with '/'
-          topic: <robot_namespace>/terrain_map_ext      # Topic providing extended terrain voxels
-          sensor_frame: front_mid360                    # Sensor frame for points
-          min_obstacle_height: 0.0                      # Minimum Z (m) accepted
-          max_obstacle_height: 2.0                      # Maximum Z (m) accepted
-          obstacle_max_range: 10.0                      # Maximum sensor range (m)
-          obstacle_min_range: 0.2                       # Minimum sensor range (m)
+          data_type: PointCloud2                        # 扩展地形数据的消息类型
+          # '<robot_namespace>' 关键字应替换为用户定义的 'namespace'。
+          # 开头不需要 '/'
+          topic: <robot_namespace>/terrain_map_ext      # 提供扩展地形体素的话题
+          sensor_frame: front_mid360                    # 点的传感器坐标系
+          min_obstacle_height: 0.0                      # 可接受的最小 Z 值（米）
+          max_obstacle_height: 2.0                      # 可接受的最大 Z 值（米）
+          obstacle_max_range: 10.0                      # 最大传感器范围（米）
+          obstacle_min_range: 0.2                       # 最小传感器范围（米）
       static_layer:
-        plugin: "nav2_costmap_2d::StaticLayer"          # Static occupancy grid source
-        map_subscribe_transient_local: True             # Subscription QoS to avoid losing latched map
+        plugin: "nav2_costmap_2d::StaticLayer"          # 静态占据栅格源
+        map_subscribe_transient_local: True             # 订阅 QoS 以避免丢失锁存的地图
       inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"       # Inflation plugin for safety buffer
-        cost_scaling_factor: 2.5                        # Cost decay rate per meter
-        inflation_radius: 0.95                          # Inflation radius (m) for global layer
-      always_send_full_costmap: False                   # Publish partial updates when possible
+        plugin: "nav2_costmap_2d::InflationLayer"       # 安全缓冲区的膨胀插件
+        cost_scaling_factor: 2.5                        # 每米的成本衰减率
+        inflation_radius: 0.95                          # 全局图层的膨胀半径（米）
+      always_send_full_costmap: False                   # 可能时发布部分更新
 
-# The yaml_filename does not need to be specified since it going to be set by defaults in launch.
-# If you'd rather set it in the yaml, remove the default "map" value in the tb3_simulation_launch.py
-# file & provide full path to map below. If CLI map configuration or launch default is provided, that will be used.
+# yaml_filename 无需在此指定，因为它将由启动文件中的默认值设置。
+# 如果你更想在 yaml 中设置它，请移除 tb3_simulation_launch.py 文件中的默认 "map" 值
+# 并在下方提供完整路径。如果提供了 CLI 地图配置或启动默认值，则将使用它们。
 map_server:
   ros__parameters:
-    yaml_filename: ""                                   # Map file path (left empty to rely on launch arguments)
+    yaml_filename: ""                                   # 地图文件路径（留空以依赖启动参数）
 
 map_saver:
   ros__parameters:
-    use_sim_time: False                                 # Use simulation clock while saving map
-    save_map_timeout: 5.0                               # Timeout (s) for map saving service
-    free_thresh_default: 0.25                           # Default free-space probability threshold
-    occupied_thresh_default: 0.65                       # Default occupied probability threshold
-    map_subscribe_transient_local: True                 # Use transient local QoS for map subscription
+    use_sim_time: False                                 # 保存地图时使用模拟时钟
+    save_map_timeout: 5.0                               # 地图保存服务的超时时间（秒）
+    free_thresh_default: 0.25                           # 默认自由空间概率阈值
+    occupied_thresh_default: 0.65                       # 默认占据概率阈值
+    map_subscribe_transient_local: True                 # 地图订阅使用 transient local QoS
 
 planner_server:
   ros__parameters:
-    use_sim_time: False                                 # Use simulated time for planner
-    expected_planner_frequency: 10.0                    # Desired plan refresh rate (Hz)
-    planner_plugins: ["GridBased"]                      # IDs of planner plugins to load
+    use_sim_time: False                                 # 规划器使用模拟时间
+    expected_planner_frequency: 10.0                    # 期望的规划刷新率 (Hz)
+    planner_plugins: ["GridBased"]                      # 要加载的规划器插件 ID 列表
     GridBased:
-      plugin: "nav2_theta_star_planner/ThetaStarPlanner"  # Planner plugin implementation
-      how_many_corners: 8                               # Connectivity (8-way) for Theta* search
-      w_euc_cost: 1.0                                   # Weight for Euclidean distance cost
-      w_traversal_cost: 10.0                            # Weight for traversal (costmap) penalties
-      w_heuristic_cost: 1.0                             # Weight for heuristic component
+      plugin: "nav2_theta_star_planner/ThetaStarPlanner"  # 规划器插件实现
+      how_many_corners: 8                               # Theta* 搜索的连通性（8-邻域）
+      w_euc_cost: 1.0                                   # 欧几里得距离成本的权重
+      w_traversal_cost: 10.0                            # 遍历（代价地图）惩罚的权重
+      w_heuristic_cost: 1.0                             # 启发式分量的权重
 
 smoother_server:
   ros__parameters:
-    use_sim_time: False                                 # Use simulated time for smoother
-    smoother_plugins: ["simple_smoother"]               # List of smoother plugin IDs
+    use_sim_time: False                                 # 平滑器使用模拟时间
+    smoother_plugins: ["simple_smoother"]               # 平滑器插件 ID 列表
     simple_smoother:
-      plugin: "nav2_smoother::SimpleSmoother"           # Smoother plugin implementation
-      tolerance: 1.0e-10                                 # Residual tolerance for smoothing convergence
-      max_its: 1000                                     # Maximum number of smoothing iterations
-      do_refinement: True                               # Perform post-smoothing refinement
+      plugin: "nav2_smoother::SimpleSmoother"           # 平滑器插件实现
+      tolerance: 1.0e-10                                 # 平滑收敛的残差容差
+      max_its: 1000                                     # 最大平滑迭代次数
+      do_refinement: True                               # 执行平滑后细化
 
 behavior_server:
   ros__parameters:
-    use_sim_time: False                                 # Use simulated time for behavior server
-    local_costmap_topic: local_costmap/costmap_raw      # Topic for local costmap data
-    global_costmap_topic: global_costmap/costmap_raw    # Topic for global costmap data
-    local_footprint_topic: local_costmap/published_footprint  # Topic publishing local footprint
-    global_footprint_topic: global_costmap/published_footprint  # Topic publishing global footprint
-    cycle_frequency: 10.0                               # Behavior server loop frequency (Hz)
-    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]  # List of behaviors loaded
+    use_sim_time: False                                 # 行为服务器使用模拟时间
+    local_costmap_topic: local_costmap/costmap_raw      # 局部代价地图数据话题
+    global_costmap_topic: global_costmap/costmap_raw    # 全局代价地图数据话题
+    local_footprint_topic: local_costmap/published_footprint  # 发布局部轮廓的话题
+    global_footprint_topic: global_costmap/published_footprint  # 发布全局轮廓的话题
+    cycle_frequency: 10.0                               # 行为服务器循环频率 (Hz)
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]  # 加载的行为列表
     spin:
-      plugin: "nav2_behaviors/Spin"                    # Plugin providing spin behavior
+      plugin: "nav2_behaviors/Spin"                    # 提供旋转行为的插件
     backup:
-      plugin: "pb_nav2_behaviors/BackUpFreeSpace"      # Custom backup behavior plugin
+      plugin: "pb_nav2_behaviors/BackUpFreeSpace"      # 自定义后退行为插件
     drive_on_heading:
-      plugin: "nav2_behaviors/DriveOnHeading"          # Plugin for straight-line drive
+      plugin: "nav2_behaviors/DriveOnHeading"          # 直线行驶行为的插件
     wait:
-      plugin: "nav2_behaviors/Wait"                    # Plugin for wait behavior
+      plugin: "nav2_behaviors/Wait"                    # 等待行为的插件
     assisted_teleop:
-      plugin: "nav2_behaviors/AssistedTeleop"          # Plugin assisting teleoperation
-    local_frame: odom                                   # Frame used for local behaviors
-    global_frame: map                                   # Frame used for global behaviors
-    robot_base_frame: gimbal_yaw_fake                   # Robot base frame reference
-    transform_tolerance: 0.1                            # TF lookup tolerance (s)
-    simulate_ahead_time: 2.0                            # Time horizon (s) for motion simulation
-    max_rotational_vel: 0.8                             # Max angular velocity in behaviors (rad/s)
-    min_rotational_vel: 0.2                             # Min angular velocity (rad/s)
-    rotational_acc_lim: 1.5                             # Angular acceleration limit (rad/s^2)
-    # params for pb_nav2_behaviors/BackUpFreeSpace
-    service_name: "global_costmap/get_costmap"          # Service name used to fetch costmap for backup
-    max_radius: 2.0                                     # Maximum radius (m) checked for clearance
-    visualize: false                                    # Publish visualization markers when true
+      plugin: "nav2_behaviors/AssistedTeleop"          # 辅助遥操作行为的插件
+    local_frame: odom                                   # 局部行为使用的坐标系
+    global_frame: map                                   # 全局行为使用的坐标系
+    robot_base_frame: gimbal_yaw_fake                   # 机器人基座坐标系参考
+    transform_tolerance: 0.1                            # TF 查询容差（秒）
+    simulate_ahead_time: 2.0                            # 运动模拟的时间范围（秒）
+    max_rotational_vel: 0.8                             # 行为中的最大角速度（弧度/秒）
+    min_rotational_vel: 0.2                             # 最小角速度（弧度/秒）
+    rotational_acc_lim: 1.5                             # 角加速度限制（弧度/秒^2）
+    # pb_nav2_behaviors/BackUpFreeSpace 的参数
+    service_name: "global_costmap/get_costmap"          # 用于获取后退所需代价地图的服务名称
+    max_radius: 2.0                                     # 检查空闲区域的最大半径（米）
+    visualize: false                                    # 为真时发布可视化标记
 
 waypoint_follower:
   ros__parameters:
-    use_sim_time: False                                 # Use simulated time for waypoint follower
-    loop_rate: 20                                       # Control loop rate (Hz) for waypoint execution
-    stop_on_failure: false                              # Whether to halt when a waypoint fails
-    waypoint_task_executor_plugin: "wait_at_waypoint"   # Plugin to run when reaching waypoints
+    use_sim_time: False                                 # 路径点跟随器使用模拟时间
+    loop_rate: 20                                       # 路径点执行的控制循环率 (Hz)
+    stop_on_failure: false                              # 路径点失败时是否停止
+    waypoint_task_executor_plugin: "wait_at_waypoint"   # 到达路径点时运行的插件
     wait_at_waypoint:
-      plugin: "nav2_waypoint_follower::WaitAtWaypoint"  # Wait behavior plugin
-      enabled: True                                     # Enable waiting at waypoints
-      waypoint_pause_duration: 200                      # Pause duration (s) at each waypoint
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"  # 等待行为插件
+      enabled: True                                     # 在路径点处启用等待
+      waypoint_pause_duration: 200                      # 每个路径点的暂停持续时间（秒）
 
 velocity_smoother:
   ros__parameters:
-    use_sim_time: False                                 # Use simulation clock for smoothing
-    smoothing_frequency: 20.0                           # Velocity smoothing rate (Hz)
-    scale_velocities: False                             # Scale velocities based on limits when true
-    feedback: "OPEN_LOOP"                               # Smoothing feedback mode
-    max_velocity: [0.8, 0.8, 1.2]                       # Max linear x, linear y, angular speeds
-    min_velocity: [-0.6, -0.6, -1.2]                    # Min linear x, linear y, angular speeds
-    max_accel: [1.5, 1.5, 2.0]                          # Max accelerations for x, y, and angular
-    max_decel: [-1.5, -1.5, -2.0]                       # Max decelerations for x, y, and angular
-    odom_topic: "odometry"                             # Odometry topic for feedback
-    odom_duration: 0.1                                  # Allowed age (s) for odom message
-    deadband_velocity: [0.0, 0.0, 0.0]                  # Deadband thresholds for velocity commands
-    velocity_timeout: 1.0                               # Timeout (s) before commands are considered stale
+    use_sim_time: False                                 # 平滑使用模拟时钟
+    smoothing_frequency: 20.0                           # 速度平滑率 (Hz)
+    scale_velocities: False                             # 为真时根据限制缩放速度
+    feedback: "OPEN_LOOP"                               # 平滑反馈模式
+    max_velocity: [0.8, 0.8, 1.2]                       # 最大线速度 x，线速度 y，角速度
+    min_velocity: [-0.6, -0.6, -1.2]                    # 最小线速度 x，线速度 y，角速度
+    max_accel: [1.5, 1.5, 2.0]                          # x，y 和角的最大加速度
+    max_decel: [-1.5, -1.5, -2.0]                       # x，y 和角的最大减速度
+    odom_topic: "odometry"                             # 反馈的里程计话题
+    odom_duration: 0.1                                  # 允许的里程计消息时效（秒）
+    deadband_velocity: [0.0, 0.0, 0.0]                  # 速度命令的死区阈值
+    velocity_timeout: 1.0                               # 命令被视为过时的超时时间（秒）
 
 pb_teleop_twist_joy_node:
   ros__parameters:
-    use_sim_time: False                                 # Use simulated time for teleop
-    robot_base_frame: gimbal_yaw                        # Base frame used for manual control
-    control_mode: auto_control                          # Default mode (auto or manual)
+    use_sim_time: False                                 # 遥操使用模拟时间
+    robot_base_frame: gimbal_yaw                        # 手动控制使用的基座坐标系
+    control_mode: auto_control                          # 默认模式（自动或手动）
 
-    require_enable_button: true                         # Require enable button to send commands
-    enable_button: 4                                    # Joystick button index enabling teleop
-    enable_turbo_button: 5                              # Button index enabling turbo mode
+    require_enable_button: true                         # 需要启用按钮才能发送命令
+    enable_button: 4                                    # 启用遥操的操纵杆按钮索引
+    enable_turbo_button: 5                              # 启用涡轮模式的按钮索引
 
     axis_chassis:
-      x: 1                                              # Axis index for forward/backward motion
-      y: 0                                              # Axis index for lateral motion
-      yaw: 6                                            # Axis/button index for yaw control
+      x: 1                                              # 前后运动的轴索引
+      y: 0                                              # 横向运动的轴索引
+      yaw: 6                                            # 偏航控制的轴/按钮索引
     scale_chassis:
-      x: 2.5                                            # Speed scale for x axis in normal mode
-      y: 2.5                                            # Speed scale for y axis in normal mode
-      yaw: 3.0                                          # Speed scale for yaw in normal mode
+      x: 2.5                                            # 普通模式下 X 轴的速度缩放
+      y: 2.5                                            # 普通模式下 Y 轴的速度缩放
+      yaw: 3.0                                          # 普通模式下偏航的速度缩放
     scale_chassis_turbo:
-      x: 4.0                                            # Speed scale for x axis in turbo mode
-      y: 4.0                                            # Speed scale for y axis in turbo mode
-      yaw: 6.0                                          # Speed scale for yaw in turbo mode
+      x: 4.0                                            # 涡轮模式下 X 轴的速度缩放
+      y: 4.0                                            # 涡轮模式下 Y 轴的速度缩放
+      yaw: 6.0                                          # 涡轮模式下偏航的速度缩放
 
     axis_gimbal:
-      roll: -1                                          # Axis index for roll (negative disables)
-      pitch: 4                                          # Axis index for gimbal pitch
-      yaw: 3                                            # Axis index for gimbal yaw
+      roll: -1                                          # 横滚的轴索引（负数表示禁用）
+      pitch: 4                                          # 云台俯仰的轴索引
+      yaw: 3                                            # 云台偏航的轴索引
     scale_gimbal:
-      roll: 0.0                                         # Scale applied to roll commands
-      pitch: -1.0                                       # Scale applied to pitch commands
-      yaw: 2.5                                          # Scale applied to yaw commands
+      roll: 0.0                                         # 应用于横滚命令的缩放
+      pitch: -1.0                                       # 应用于俯仰命令的缩放
+      yaw: 2.5                                          # 应用于偏航命令的缩放
     scale_gimbal_turbo:
-      roll: 0.0                                         # Turbo scale for roll commands
-      pitch: -1.5                                       # Turbo scale for pitch commands
-      yaw: 3.5                                          # Turbo scale for yaw commands
+      roll: 0.0                                         # 横滚命令的涡轮缩放
+      pitch: -1.5                                       # 俯仰命令的涡轮缩放
+      yaw: 3.5                                          # 偏航命令的涡轮缩放

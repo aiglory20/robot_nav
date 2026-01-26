@@ -27,11 +27,11 @@ from launch_ros.actions import Node
 def generate_launch_description():
     # 声明启动参数
     namespace_arg = DeclareLaunchArgument(
-        "namespace", default_value="red_standard_robot1", description="机器人命名空间"
+        "namespace", default_value="", description="机器人命名空间（为空则不使用namespace）"
     )
 
     use_sim_time_arg = DeclareLaunchArgument(
-        "use_sim_time", default_value="true", description="是否使用仿真时间"
+        "use_sim_time", default_value="false", description="是否使用仿真时间"
     )
 
     # 自动导航节点

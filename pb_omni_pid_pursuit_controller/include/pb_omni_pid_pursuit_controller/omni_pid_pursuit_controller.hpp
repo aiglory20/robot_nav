@@ -299,6 +299,18 @@ private:
   double max_velocity_scaling_factor_rate_;
   tf2::Duration transform_tolerance_;
 
+  // Align-to-target-in-place gating parameters
+  bool align_to_target_before_motion_{false};
+  bool align_to_target_use_rear_heading_{true};
+  std::string align_to_target_heading_frame_{};
+  double align_to_target_threshold_deg_{30.0};
+  double align_to_target_tolerance_deg_{2.0};
+  double align_to_target_rotation_kp_{2.0};
+  double align_to_target_disable_distance_{0.5};
+  bool align_to_target_debug_{false};
+  double align_to_target_debug_throttle_sec_{1.0};
+  bool align_to_target_active_{false};
+
   nav_msgs::msg::Path global_plan_;
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr local_path_pub_;
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PointStamped>::SharedPtr carrot_pub_;

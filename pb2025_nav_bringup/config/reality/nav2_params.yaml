@@ -382,6 +382,17 @@ controller_server:
       curvature_backward_dist: 0.3                      # 后向距离，用于曲率计算
       max_velocity_scaling_factor_rate: 0.5             # 限制加减速度突变
 
+      # 当车体(车尾/车头)与目标点夹角过大时，先原地转向对齐，再继续前进
+      align_to_target_before_motion: true #启用对齐功能
+      align_to_target_use_rear_heading: true #使用车尾方向与目标点对齐
+      align_to_target_heading_frame: chassis #用于计算 map 下 yaw 的 TF 坐标系
+      align_to_target_threshold_deg: 40.0 #进入阈值（加迟滞，避免在20°附近反复触发）
+      align_to_target_tolerance_deg: 8.0 #停止旋转范围（|angle|<=20° 停止）
+      align_to_target_rotation_kp: 0.9   #原地转角速度比例系数
+      align_to_target_disable_distance: 0.6 #距离最终目标点小于该值(米)则不再触发原地对齐
+      align_to_target_debug: false #打印 yaw/bearing/误差
+      align_to_target_debug_throttle_sec: 1.0 #打印周期(秒)
+
 local_costmap:
   local_costmap:
     ros__parameters:

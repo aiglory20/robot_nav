@@ -31,13 +31,18 @@ class AutoNavigator(Node):
         super().__init__("auto_navigator")
 
         # 声明参数 (use_sim_time 会被 launch 文件自动设置,无需声明)
-        self.declare_parameter("namespace", "red_standard_robot1")
+        self.declare_parameter("namespace", "")
 
         # 获取参数
         self.namespace = self.get_parameter("namespace").value
 
         # 创建 NavigateToPose action client
-        action_name = f"/{self.namespace}/navigate_to_pose"
+        # 如果namespace为空，直接使用 /navigate_to_pose
+        if self.namespace:
+            action_name = f"/{self.namespace}/navigate_to_pose"
+        else:
+            action_name = "/navigate_to_pose"
+        
         self._action_client = ActionClient(self, NavigateToPose, action_name)
 
         self.get_logger().info(f"等待 action server: {action_name}")
@@ -47,10 +52,14 @@ class AutoNavigator(Node):
         # 定义三个目标点 (x, y, yaw) - rmuc_2025 地图上的坐标
         # 这些坐标是示例,您可以根据实际地图调整
         self.waypoints = [
-            {"name": "Point A", "x": 5.36035, "y": 4.56871, "yaw": 0.0},
-            {"name": "Point B", "x": 10.731984, "y": 0.920454, "yaw": 0.0},
-            {"name": "Point C", "x": 1.74057, "y": -2.87552, "yaw": 0.0},
+            {"name": "Point A", "x": 0.024, "y": -0.025, "yaw": 0.0},
+            {"name": "Point B", "x": -3.182, "y": -0.839, "yaw": 0.0},
+            {"name": "Point C", "x": -6.887, "y": 4.630, "yaw": 0.0},
         ]
+        
+        # X=  0.024m  Y= -0.025m  Yaw=   8.4° A点
+        # X= -3.182m  Y= -0.839m  Yaw=  28.5° B点
+        # X= -6.887m  Y=  4.630m  Yaw=  26.7° C点
 
         self.current_waypoint_index = 0
         self.is_navigating = False

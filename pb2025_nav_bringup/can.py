@@ -9,7 +9,15 @@ import time
 from dataclasses import dataclass
 from typing import Iterable, Optional, Tuple
 
-# ! 运行方式，先运行nav2,再另一个终端python can.py --mode cmd_vel --port /dev/ttyACM0 --cmd-topic /cmd_vel --echo
+# ! 运行方式，先运行nav2,再另一个终端
+# cd src/robot_nav/pb2025_nav_bringup 
+# sudo chmod 666 /dev/ttyACM0 
+# python can.py --mode cmd_vel --port /dev/ttyACM0 --cmd-topic /cmd_vel --echo
+# 保存地图 
+# 终端运行 ros2 launch pb2025_nav_bringup rm_navigation_reality_launch.py \ slam:=True \ use_robot_state_pub:=True
+# 第二个终端运行 ros2 launch point_lio point_lio.launch.py
+# 第三个终端运行 ros2 run nav2_map_server map_saver_cli -f <YOUR_MAP_NAME>
+# pcd文件在point_lio/pcd/目录下
 
 # ---------------------------------------------------------------------------
 # Serial helper (兼容不同 pyserial 安装方式)
@@ -179,7 +187,16 @@ def run_cmd_vel_bridge(serial_handle, cfg: BridgeConfig, ros_args: list[str]) ->
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info('收到 Ctrl+C，准备退出')
+        node.get_logger().info('收到 Ctrl+C，发送停止命令')
+        # 发送停止帧（速度全为0）
+        stop_frame = build_velocity_frame(
+            0, 0, 0, cfg.reserve1, cfg.reserve2, cfg.start_byte, cfg.end_byte)
+        try:
+            serial_handle.write(stop_frame)
+            node.get_logger().info('已发送停止命令，准备退出')
+            time.sleep(0.1)  # 等待停止命令发送完成
+        except Exception as exc:
+            node.get_logger().error(f"发送停止命令失败: {exc}")
     finally:
         node.destroy_node()
         rclpy.shutdown()

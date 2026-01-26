@@ -18,6 +18,8 @@
 #include "nav2_util/geometry_utils.hpp"
 #include "nav2_util/node_utils.hpp"
 
+#include "geometry_msgs/msg/transform_stamped.hpp"
+
 using nav2_util::declare_parameter_if_not_declared;
 using nav2_util::geometry_utils::euclidean_distance;
 using std::abs;
@@ -29,6 +31,23 @@ using rcl_interfaces::msg::ParameterType;
 
 namespace pb_omni_pid_pursuit_controller
 {
+
+static constexpr double kPi = 3.14159265358979323846;
+
+static inline double normalize_angle(double angle)
+{
+  return std::atan2(std::sin(angle), std::cos(angle));
+}
+
+static inline double deg2rad(double deg)
+{
+  return deg * kPi / 180.0;
+}
+
+static inline double rad2deg(double rad)
+{
+  return rad * 180.0 / kPi;
+}
 
 void OmniPidPursuitController::configure(
   const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent, std::string name,
@@ -113,6 +132,25 @@ void OmniPidPursuitController::configure(
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".max_velocity_scaling_factor_rate", rclcpp::ParameterValue(0.9));
 
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_before_motion", rclcpp::ParameterValue(false));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_use_rear_heading", rclcpp::ParameterValue(true));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_heading_frame", rclcpp::ParameterValue(std::string("")));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_threshold_deg", rclcpp::ParameterValue(30.0));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_tolerance_deg", rclcpp::ParameterValue(2.0));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_rotation_kp", rclcpp::ParameterValue(2.0));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_disable_distance", rclcpp::ParameterValue(0.5));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_debug", rclcpp::ParameterValue(false));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".align_to_target_debug_throttle_sec", rclcpp::ParameterValue(1.0));
+
   node->get_parameter(plugin_name_ + ".translation_kp", translation_kp_);
   node->get_parameter(plugin_name_ + ".translation_ki", translation_ki_);
   node->get_parameter(plugin_name_ + ".translation_kd", translation_kd_);
@@ -156,6 +194,25 @@ void OmniPidPursuitController::configure(
   node->get_parameter(
     plugin_name_ + ".max_velocity_scaling_factor_rate", max_velocity_scaling_factor_rate_);
 
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_before_motion", align_to_target_before_motion_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_use_rear_heading", align_to_target_use_rear_heading_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_heading_frame", align_to_target_heading_frame_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_threshold_deg", align_to_target_threshold_deg_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_tolerance_deg", align_to_target_tolerance_deg_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_rotation_kp", align_to_target_rotation_kp_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_disable_distance", align_to_target_disable_distance_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_debug", align_to_target_debug_);
+  node->get_parameter(
+    plugin_name_ + ".align_to_target_debug_throttle_sec", align_to_target_debug_throttle_sec_);
+
   node->get_parameter("controller_frequency", control_frequency);
 
   transform_tolerance_ = tf2::durationFromSec(transform_tolerance);
@@ -173,6 +230,8 @@ void OmniPidPursuitController::configure(
     translation_ki_);
   heading_pid_ = std::make_shared<PID>(
     control_duration_, v_angular_max_, v_angular_min_, rotation_kp_, rotation_kd_, rotation_ki_);
+
+  align_to_target_active_ = false;
 }
 
 void OmniPidPursuitController::cleanup()
@@ -252,6 +311,109 @@ geometry_msgs::msg::TwistStamped OmniPidPursuitController::computeVelocityComman
 
   applyApproachVelocityScaling(transformed_plan, lin_vel);
 
+  // If the angle between (rear/front) heading and the target point is too large,
+  // rotate in place until aligned, then continue translating.
+  if (align_to_target_before_motion_) {
+    // Disable this behavior near the final goal pose.
+    if (!transformed_plan.poses.empty() && align_to_target_disable_distance_ > 0.0) {
+      const auto & goal_local = transformed_plan.poses.back().pose.position;
+      const double dist_to_goal = std::hypot(goal_local.x, goal_local.y);
+      if (dist_to_goal <= align_to_target_disable_distance_) {
+        align_to_target_active_ = false;
+        goto skip_align_to_target;
+      }
+    }
+
+    double align_error = 0.0;
+    bool has_align_error = false;
+    bool used_tf_global_yaw = false;
+    double robot_yaw = std::numeric_limits<double>::quiet_NaN();
+    double bearing = std::numeric_limits<double>::quiet_NaN();
+
+    // Preferred: compute using map/global yaw from a specific TF frame (e.g., chassis)
+    // This matches the idea in robot_pose_monitor.py (map -> chassis yaw).
+    if (!align_to_target_heading_frame_.empty()) {
+      const auto global_frame =
+        !global_plan_.header.frame_id.empty() ? global_plan_.header.frame_id : pose.header.frame_id;
+      try {
+        const geometry_msgs::msg::TransformStamped tf_global_to_heading =
+          tf_->lookupTransform(global_frame, align_to_target_heading_frame_, tf2::TimePointZero);
+
+        const double robot_x = tf_global_to_heading.transform.translation.x;
+        const double robot_y = tf_global_to_heading.transform.translation.y;
+        robot_yaw = tf2::getYaw(tf_global_to_heading.transform.rotation);
+
+        geometry_msgs::msg::PoseStamped carrot_global;
+        if (transformPose(global_frame, carrot_pose, carrot_global)) {
+          const double target_x = carrot_global.pose.position.x;
+          const double target_y = carrot_global.pose.position.y;
+
+          bearing = std::atan2(target_y - robot_y, target_x - robot_x);
+          const double heading = robot_yaw + (align_to_target_use_rear_heading_ ? kPi : 0.0);
+          align_error = normalize_angle(bearing - heading);
+          has_align_error = true;
+          used_tf_global_yaw = true;
+        }
+      } catch (tf2::TransformException & /*ex*/) {
+        has_align_error = false;
+      }
+    }
+
+    // If TF lookup failed, try to get yaw from the controller pose transformed into the global frame.
+    if (!used_tf_global_yaw) {
+      const auto global_frame =
+        !global_plan_.header.frame_id.empty() ? global_plan_.header.frame_id : pose.header.frame_id;
+      geometry_msgs::msg::PoseStamped pose_global;
+      if (transformPose(global_frame, pose, pose_global)) {
+        robot_yaw = tf2::getYaw(pose_global.pose.orientation);
+      }
+    }
+
+    // Fallback: use carrot point in robot base frame (theta_dist).
+    if (!has_align_error) {
+      align_error = align_to_target_use_rear_heading_ ? normalize_angle(theta_dist - kPi) : theta_dist;
+      has_align_error = true;
+    }
+
+    if (align_to_target_debug_) {
+      const int64_t throttle_ms =
+        static_cast<int64_t>(std::max(0.05, align_to_target_debug_throttle_sec_) * 1000.0);
+
+      // Only print the 2 requested values: map/global yaw and angle to target.
+      RCLCPP_INFO_THROTTLE(
+        logger_, *clock_, throttle_ms,
+        "[align_to_target] yaw=%.1fdeg angle=%.1fdeg",
+        rad2deg(robot_yaw), rad2deg(align_error));
+    }
+
+    const double threshold = deg2rad(std::max(0.0, align_to_target_threshold_deg_));
+    const double tolerance = deg2rad(std::max(0.0, align_to_target_tolerance_deg_));
+
+    if (!align_to_target_active_) {
+      if (std::fabs(align_error) > threshold) {
+        align_to_target_active_ = true;
+        heading_pid_->setSumError(0.0);
+      }
+    } else {
+      if (std::fabs(align_error) <= tolerance) {
+        align_to_target_active_ = false;
+        heading_pid_->setSumError(0.0);
+      }
+    }
+
+    if (align_to_target_active_) {
+      geometry_msgs::msg::TwistStamped cmd_vel;
+      cmd_vel.header = pose.header;
+      cmd_vel.twist.linear.x = 0.0;
+      cmd_vel.twist.linear.y = 0.0;
+      cmd_vel.twist.angular.z = std::clamp(
+        align_to_target_rotation_kp_ * align_error, v_angular_min_, v_angular_max_);
+      return cmd_vel;
+    }
+  }
+
+skip_align_to_target:
+
   // Transform local frame to global frame to use in collision checking
   nav_msgs::msg::Path costmap_frame_local_plan;
 
@@ -277,7 +439,11 @@ geometry_msgs::msg::TwistStamped OmniPidPursuitController::computeVelocityComman
   return cmd_vel;
 }
 
-void OmniPidPursuitController::setPlan(const nav_msgs::msg::Path & path) { global_plan_ = path; }
+void OmniPidPursuitController::setPlan(const nav_msgs::msg::Path & path)
+{
+  global_plan_ = path;
+  align_to_target_active_ = false;
+}
 
 void OmniPidPursuitController::setSpeedLimit(
   const double & /*speed_limit*/, const bool & /*percentage*/)
@@ -743,6 +909,16 @@ rcl_interfaces::msg::SetParametersResult OmniPidPursuitController::dynamicParame
         curvature_backward_dist_ = parameter.as_double();
       } else if (name == plugin_name_ + ".max_velocity_scaling_factor_rate") {
         max_velocity_scaling_factor_rate_ = parameter.as_double();
+      } else if (name == plugin_name_ + ".align_to_target_threshold_deg") {
+        align_to_target_threshold_deg_ = parameter.as_double();
+      } else if (name == plugin_name_ + ".align_to_target_tolerance_deg") {
+        align_to_target_tolerance_deg_ = parameter.as_double();
+      } else if (name == plugin_name_ + ".align_to_target_rotation_kp") {
+        align_to_target_rotation_kp_ = parameter.as_double();
+      } else if (name == plugin_name_ + ".align_to_target_disable_distance") {
+        align_to_target_disable_distance_ = parameter.as_double();
+      } else if (name == plugin_name_ + ".align_to_target_debug_throttle_sec") {
+        align_to_target_debug_throttle_sec_ = parameter.as_double();
       }
     } else if (type == ParameterType::PARAMETER_BOOL) {
       if (name == plugin_name_ + ".use_velocity_scaled_lookahead_dist") {
@@ -751,6 +927,15 @@ rcl_interfaces::msg::SetParametersResult OmniPidPursuitController::dynamicParame
         use_interpolation_ = parameter.as_bool();
       } else if (name == plugin_name_ + ".use_rotate_to_heading") {
         use_rotate_to_heading_ = parameter.as_bool();
+      } else if (name == plugin_name_ + ".align_to_target_before_motion") {
+        align_to_target_before_motion_ = parameter.as_bool();
+        if (!align_to_target_before_motion_) {
+          align_to_target_active_ = false;
+        }
+      } else if (name == plugin_name_ + ".align_to_target_use_rear_heading") {
+        align_to_target_use_rear_heading_ = parameter.as_bool();
+      } else if (name == plugin_name_ + ".align_to_target_debug") {
+        align_to_target_debug_ = parameter.as_bool();
       }
     }
   }
