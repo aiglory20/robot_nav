@@ -52,8 +52,8 @@ class AutoNavigator(Node):
         # 定义三个目标点 (x, y, yaw) - rmuc_2025 地图上的坐标
         # 这些坐标是示例,您可以根据实际地图调整
         self.waypoints = [
-            {"name": "Point A", "x": 0.024, "y": -0.025, "yaw": 0.0},
-            {"name": "Point B", "x": -3.182, "y": -0.839, "yaw": 0.0},
+            {"name": "Point A", "x": 0.024, "y": -0.025, "yaw": 90.0},
+            {"name": "Point B", "x": -3.182, "y": -0.839, "yaw": 90.0},
             {"name": "Point C", "x": -6.887, "y": 4.630, "yaw": 0.0},
         ]
         
@@ -136,7 +136,7 @@ class AutoNavigator(Node):
         self.get_logger().info(f"到达 {waypoint['name']}!")
 
         # 等待1秒后继续下一个点
-        time.sleep(1.0)
+        time.sleep(5.0)
 
         # 移动到下一个航点
         self.current_waypoint_index += 1

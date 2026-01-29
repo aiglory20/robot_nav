@@ -105,6 +105,10 @@ void OmniPidPursuitController::configure(
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".use_rotate_to_heading_treshold", rclcpp::ParameterValue(0.1));
   declare_parameter_if_not_declared(
+    node, plugin_name_ + ".yaw_align_error_threshold", rclcpp::ParameterValue(0.15));
+  declare_parameter_if_not_declared(
+    node, plugin_name_ + ".yaw_debug_print", rclcpp::ParameterValue(true));
+  declare_parameter_if_not_declared(
     node, plugin_name_ + ".min_approach_linear_velocity", rclcpp::ParameterValue(0.05));
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".approach_velocity_scaling_dist", rclcpp::ParameterValue(0.6));
@@ -170,6 +174,10 @@ void OmniPidPursuitController::configure(
   node->get_parameter(plugin_name_ + ".use_rotate_to_heading", use_rotate_to_heading_);
   node->get_parameter(
     plugin_name_ + ".use_rotate_to_heading_treshold", use_rotate_to_heading_treshold_);
+  node->get_parameter(
+    plugin_name_ + ".yaw_align_error_threshold", yaw_align_error_threshold_);
+  node->get_parameter(
+    plugin_name_ + ".yaw_debug_print", yaw_debug_print_);
   node->get_parameter(
     plugin_name_ + ".min_approach_linear_velocity", min_approach_linear_velocity_);
   node->get_parameter(
@@ -277,7 +285,7 @@ void OmniPidPursuitController::deactivate()
 
 geometry_msgs::msg::TwistStamped OmniPidPursuitController::computeVelocityCommands(
   const geometry_msgs::msg::PoseStamped & pose, const geometry_msgs::msg::Twist & velocity,
-  nav2_core::GoalChecker * /*goal_checker*/)
+  nav2_core::GoalChecker * goal_checker)
 {
   std::lock_guard<std::mutex> lock_reinit(mutex_);
 
@@ -304,8 +312,84 @@ geometry_msgs::msg::TwistStamped OmniPidPursuitController::computeVelocityComman
     }
   }
 
+  // Check if we're at goal position (xy only)
+  bool at_goal_xy = false;
+  if (!transformed_plan.poses.empty()) {
+    const auto& goal_pose = transformed_plan.poses.back().pose;
+    double dist_to_goal = hypot(goal_pose.position.x, goal_pose.position.y);
+    at_goal_xy = (dist_to_goal < 0.15);  // within 15cm of goal xy position
+  }
+
   auto lin_vel = move_pid_->calculate(lin_dist, 0);
-  auto angular_vel = enable_rotation_ ? heading_pid_->calculate(angle_to_goal, 0) : 0.0;
+  
+  // Rotation control strategy:
+  // - During navigation: full rotation control
+  // - At goal xy position: only rotate if yaw error is significant (> 0.2 rad ~11 deg)
+  //   and use reduced gain to avoid oscillation
+  double angular_vel = 0.0;
+  if (enable_rotation_) {
+    // Get current robot yaw using map->chassis TF (same as align_to_target method)
+    double current_yaw = 0.0;
+    double target_yaw = 0.0;
+    double yaw_error = angle_to_goal;
+    bool got_yaw = false;
+    
+    try {
+      // Use global frame (map) and chassis frame to get accurate yaw
+      const auto global_frame =
+        !global_plan_.header.frame_id.empty() ? global_plan_.header.frame_id : pose.header.frame_id;
+      
+      // Get robot yaw from map->chassis (or use align_to_target_heading_frame_ if configured)
+      std::string robot_frame = "chassis";
+      if (!align_to_target_heading_frame_.empty()) {
+        robot_frame = align_to_target_heading_frame_;
+      }
+      
+      const geometry_msgs::msg::TransformStamped tf_map_to_chassis =
+        tf_->lookupTransform(global_frame, robot_frame, tf2::TimePointZero);
+      current_yaw = tf2::getYaw(tf_map_to_chassis.transform.rotation);
+      
+      // Get target yaw in map frame
+      if (!transformed_plan.poses.empty()) {
+        geometry_msgs::msg::PoseStamped goal_in_map;
+        if (transformPose(global_frame, transformed_plan.poses.back(), goal_in_map)) {
+          target_yaw = tf2::getYaw(goal_in_map.pose.orientation);
+          // Use rear heading for yaw error calculation (rear alignment to target)
+          double rear_yaw = normalize_angle(current_yaw + kPi);
+          yaw_error = normalize_angle(target_yaw - rear_yaw);
+          got_yaw = true;
+        }
+      }
+    } catch (tf2::TransformException & ex) {
+      RCLCPP_WARN_THROTTLE(logger_, *clock_, 1000, "无法获取TF变换: %s", ex.what());
+      got_yaw = false;
+    }
+    
+    // 持续输出调试信息
+    if (yaw_debug_print_ && got_yaw) {
+      double rear_yaw = normalize_angle(current_yaw + kPi);
+      RCLCPP_INFO_THROTTLE(
+        logger_, *clock_, 200,
+        "当前yaw=%.1f° 车尾yaw=%.1f° 目标yaw=%.1f° 误差=%.1f° 距离=%.3fm at_goal_xy=%s",
+        rad2deg(current_yaw), rad2deg(rear_yaw), rad2deg(target_yaw), rad2deg(yaw_error), 
+        hypot(transformed_plan.poses.back().pose.position.x, transformed_plan.poses.back().pose.position.y),
+        at_goal_xy ? "是" : "否");
+    }
+    
+    if (!at_goal_xy) {
+      // Normal navigation - use path tracking angle
+      angular_vel = heading_pid_->calculate(angle_to_goal, 0);
+    } else {
+      // At goal xy - use rear yaw error for alignment
+      // Only rotate if error > threshold to avoid oscillation
+      if (got_yaw && fabs(yaw_error) > yaw_align_error_threshold_) {
+        // PID controller automatically makes speed proportional to error
+        angular_vel = heading_pid_->calculate(yaw_error, 0);
+      } else {
+        angular_vel = 0.0;
+      }
+    }
+  }
 
   applyCurvatureLimitation(transformed_plan, carrot_pose, lin_vel);
 
@@ -885,6 +969,8 @@ rcl_interfaces::msg::SetParametersResult OmniPidPursuitController::dynamicParame
         lookahead_time_ = parameter.as_double();
       } else if (name == plugin_name_ + ".use_rotate_to_heading_treshold") {
         use_rotate_to_heading_treshold_ = parameter.as_double();
+      } else if (name == plugin_name_ + ".yaw_align_error_threshold") {
+        yaw_align_error_threshold_ = parameter.as_double();
       } else if (name == plugin_name_ + ".min_approach_linear_velocity") {
         min_approach_linear_velocity_ = parameter.as_double();
       } else if (name == plugin_name_ + ".approach_velocity_scaling_dist") {
@@ -927,6 +1013,8 @@ rcl_interfaces::msg::SetParametersResult OmniPidPursuitController::dynamicParame
         use_interpolation_ = parameter.as_bool();
       } else if (name == plugin_name_ + ".use_rotate_to_heading") {
         use_rotate_to_heading_ = parameter.as_bool();
+      } else if (name == plugin_name_ + ".yaw_debug_print") {
+        yaw_debug_print_ = parameter.as_bool();
       } else if (name == plugin_name_ + ".align_to_target_before_motion") {
         align_to_target_before_motion_ = parameter.as_bool();
         if (!align_to_target_before_motion_) {

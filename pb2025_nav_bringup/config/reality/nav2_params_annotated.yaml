@@ -348,14 +348,14 @@ controller_server:
       stateful: True                                    # 在目标检查之间保持状态
       plugin: "nav2_controller::SimpleGoalChecker"      # 目标检查器插件类
       xy_goal_tolerance: 0.12                           # 位置容差（米）
-      yaw_goal_tolerance: 0.35                          # 航向容差（弧度）
+      yaw_goal_tolerance: 0.25                          # 航向容差（弧度，约14度）
     FollowPath:
       plugin: "pb_omni_pid_pursuit_controller::OmniPidPursuitController"  # 控制器插件实现
       translation_kp: 1.6                                # 平移的比例增益
       translation_ki: 0.05                              # 平移的积分增益
       translation_kd: 0.15                              # 平移的微分增益
-      enable_rotation: false                            # 控制器是否处理旋转
-      rotation_kp: 1.5                                  # 旋转的比例增益
+      enable_rotation: true                             # 控制器是否处理旋转
+      rotation_kp: 0.8                                  # 旋转的比例增益
       rotation_ki: 0.05                                 # 旋转的积分增益
       rotation_kd: 0.2                                  # 旋转的微分增益
       transform_tolerance: 0.1                          # 查询变换时的 TF 容差（秒）
@@ -368,6 +368,8 @@ controller_server:
       use_interpolation: false                          # 为真时在路径点之间插值
       use_rotate_to_heading: false                      # 接近目标时的旋转对准航向行为
       use_rotate_to_heading_treshold: 0.1               # 切换到旋转对准航向的速度阈值
+      yaw_align_error_threshold: 0.15                   # 车尾对齐 yaw 的误差阈值（弧度）
+      yaw_debug_print: true                             # 是否输出 yaw 调试信息
       min_approach_linear_velocity: 0.05                # 接近目标时的最小速度（米/秒）
       approach_velocity_scaling_dist: 0.5               # 开始减速的接近距离（米）
       v_linear_min: -0.6                                # 最小线速度命令（米/秒）

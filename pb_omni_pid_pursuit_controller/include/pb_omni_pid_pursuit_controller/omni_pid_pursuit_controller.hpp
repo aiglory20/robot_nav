@@ -285,6 +285,8 @@ private:
   double lookahead_time_;
   bool use_rotate_to_heading_;
   double use_rotate_to_heading_treshold_;
+  double yaw_align_error_threshold_{0.15};
+  bool yaw_debug_print_{true};
   double v_linear_min_;
   double v_linear_max_;
   double v_angular_min_;
