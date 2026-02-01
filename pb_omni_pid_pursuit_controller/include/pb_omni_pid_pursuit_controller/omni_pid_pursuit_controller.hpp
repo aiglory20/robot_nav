@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "geometry_msgs/msg/pose_stamped.hpp"
+
 #include "nav2_core/controller.hpp"
 #include "pb_omni_pid_pursuit_controller/pid.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -300,6 +302,11 @@ private:
   double curvature_backward_dist_;
   double max_velocity_scaling_factor_rate_;
   tf2::Duration transform_tolerance_;
+  std::string goal_pose_topic_{"goal_pose"};
+  bool has_goal_pose_{false};
+  geometry_msgs::msg::PoseStamped last_goal_pose_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_pose_sub_;
+  std::mutex goal_pose_mutex_;
 
   // Align-to-target-in-place gating parameters
   bool align_to_target_before_motion_{false};

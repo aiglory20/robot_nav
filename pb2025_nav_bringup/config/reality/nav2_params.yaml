@@ -371,6 +371,7 @@ controller_server:
       use_rotate_to_heading_treshold: 0.1
       yaw_align_error_threshold: 0.15                        # 8.6 degrees
       yaw_debug_print: true                                  # debugging aid
+      goal_pose_topic: goal_pose
       min_approach_linear_velocity: 0.05
       approach_velocity_scaling_dist: 0.5
       v_linear_min: -0.6

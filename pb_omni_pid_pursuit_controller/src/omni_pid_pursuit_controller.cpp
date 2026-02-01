@@ -109,6 +109,8 @@ void OmniPidPursuitController::configure(
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".yaw_debug_print", rclcpp::ParameterValue(true));
   declare_parameter_if_not_declared(
+    node, plugin_name_ + ".goal_pose_topic", rclcpp::ParameterValue(std::string("goal_pose")));
+  declare_parameter_if_not_declared(
     node, plugin_name_ + ".min_approach_linear_velocity", rclcpp::ParameterValue(0.05));
   declare_parameter_if_not_declared(
     node, plugin_name_ + ".approach_velocity_scaling_dist", rclcpp::ParameterValue(0.6));
@@ -179,6 +181,8 @@ void OmniPidPursuitController::configure(
   node->get_parameter(
     plugin_name_ + ".yaw_debug_print", yaw_debug_print_);
   node->get_parameter(
+    plugin_name_ + ".goal_pose_topic", goal_pose_topic_);
+  node->get_parameter(
     plugin_name_ + ".min_approach_linear_velocity", min_approach_linear_velocity_);
   node->get_parameter(
     plugin_name_ + ".approach_velocity_scaling_dist", approach_velocity_scaling_dist_);
@@ -238,6 +242,14 @@ void OmniPidPursuitController::configure(
     translation_ki_);
   heading_pid_ = std::make_shared<PID>(
     control_duration_, v_angular_max_, v_angular_min_, rotation_kp_, rotation_kd_, rotation_ki_);
+
+  goal_pose_sub_ = node->create_subscription<geometry_msgs::msg::PoseStamped>(
+    goal_pose_topic_, rclcpp::QoS(10),
+    [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+      std::lock_guard<std::mutex> lock(goal_pose_mutex_);
+      last_goal_pose_ = *msg;
+      has_goal_pose_ = true;
+    });
 
   align_to_target_active_ = false;
 }
@@ -349,14 +361,33 @@ geometry_msgs::msg::TwistStamped OmniPidPursuitController::computeVelocityComman
         tf_->lookupTransform(global_frame, robot_frame, tf2::TimePointZero);
       current_yaw = tf2::getYaw(tf_map_to_chassis.transform.rotation);
       
-      // Get target yaw in map frame
+      // Get target yaw in map frame (prefer goal_pose topic if available)
+      geometry_msgs::msg::PoseStamped goal_source;
+      bool has_goal_source = false;
+      {
+        std::lock_guard<std::mutex> lock(goal_pose_mutex_);
+        if (has_goal_pose_) {
+          goal_source = last_goal_pose_;
+          has_goal_source = true;
+        }
+      }
+
+      if (has_goal_source) {
+        geometry_msgs::msg::PoseStamped goal_in_map;
+        if (transformPose(global_frame, goal_source, goal_in_map)) {
+          target_yaw = tf2::getYaw(goal_in_map.pose.orientation);
+          yaw_error = normalize_angle(target_yaw - current_yaw);
+          got_yaw = true;
+        }
+      }
+
+      // Fallback to planner's final pose orientation
       if (!transformed_plan.poses.empty()) {
         geometry_msgs::msg::PoseStamped goal_in_map;
-        if (transformPose(global_frame, transformed_plan.poses.back(), goal_in_map)) {
+        if (!got_yaw && transformPose(global_frame, transformed_plan.poses.back(), goal_in_map)) {
           target_yaw = tf2::getYaw(goal_in_map.pose.orientation);
-          // Use rear heading for yaw error calculation (rear alignment to target)
-          double rear_yaw = normalize_angle(current_yaw + kPi);
-          yaw_error = normalize_angle(target_yaw - rear_yaw);
+          // Use front heading for yaw error calculation (front alignment to target)
+          yaw_error = normalize_angle(target_yaw - current_yaw);
           got_yaw = true;
         }
       }
@@ -367,11 +398,10 @@ geometry_msgs::msg::TwistStamped OmniPidPursuitController::computeVelocityComman
     
     // 持续输出调试信息
     if (yaw_debug_print_ && got_yaw) {
-      double rear_yaw = normalize_angle(current_yaw + kPi);
       RCLCPP_INFO_THROTTLE(
         logger_, *clock_, 200,
-        "当前yaw=%.1f° 车尾yaw=%.1f° 目标yaw=%.1f° 误差=%.1f° 距离=%.3fm at_goal_xy=%s",
-        rad2deg(current_yaw), rad2deg(rear_yaw), rad2deg(target_yaw), rad2deg(yaw_error), 
+        "当前yaw=%.1f° 目标yaw=%.1f° 误差=%.1f° 距离=%.3fm at_goal_xy=%s",
+        rad2deg(current_yaw), rad2deg(target_yaw), rad2deg(yaw_error), 
         hypot(transformed_plan.poses.back().pose.position.x, transformed_plan.poses.back().pose.position.y),
         at_goal_xy ? "是" : "否");
     }
@@ -380,13 +410,17 @@ geometry_msgs::msg::TwistStamped OmniPidPursuitController::computeVelocityComman
       // Normal navigation - use path tracking angle
       angular_vel = heading_pid_->calculate(angle_to_goal, 0);
     } else {
-      // At goal xy - use rear yaw error for alignment
+      // At goal xy - use front yaw error for alignment
       // Only rotate if error > threshold to avoid oscillation
       if (got_yaw && fabs(yaw_error) > yaw_align_error_threshold_) {
         // PID controller automatically makes speed proportional to error
         angular_vel = heading_pid_->calculate(yaw_error, 0);
+        // Stop linear motion when aligning yaw at goal
+        lin_vel = 0.0;
       } else {
+        // Reached goal: stop all motion
         angular_vel = 0.0;
+        lin_vel = 0.0;
       }
     }
   }
@@ -527,6 +561,13 @@ void OmniPidPursuitController::setPlan(const nav_msgs::msg::Path & path)
 {
   global_plan_ = path;
   align_to_target_active_ = false;
+  
+  // Clear cached goal_pose when receiving a new plan
+  // This allows manual goal poses from RViz to use planner's target yaw
+  {
+    std::lock_guard<std::mutex> lock(goal_pose_mutex_);
+    has_goal_pose_ = false;
+  }
 }
 
 void OmniPidPursuitController::setSpeedLimit(
@@ -1005,6 +1046,20 @@ rcl_interfaces::msg::SetParametersResult OmniPidPursuitController::dynamicParame
         align_to_target_disable_distance_ = parameter.as_double();
       } else if (name == plugin_name_ + ".align_to_target_debug_throttle_sec") {
         align_to_target_debug_throttle_sec_ = parameter.as_double();
+      }
+    } else if (type == ParameterType::PARAMETER_STRING) {
+      if (name == plugin_name_ + ".goal_pose_topic") {
+        goal_pose_topic_ = parameter.as_string();
+        auto node = node_.lock();
+        if (node) {
+          goal_pose_sub_ = node->create_subscription<geometry_msgs::msg::PoseStamped>(
+            goal_pose_topic_, rclcpp::QoS(10),
+            [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+              std::lock_guard<std::mutex> lock(goal_pose_mutex_);
+              last_goal_pose_ = *msg;
+              has_goal_pose_ = true;
+            });
+        }
       }
     } else if (type == ParameterType::PARAMETER_BOOL) {
       if (name == plugin_name_ + ".use_velocity_scaled_lookahead_dist") {

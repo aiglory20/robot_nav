@@ -370,6 +370,7 @@ controller_server:
       use_rotate_to_heading_treshold: 0.1               # 切换到旋转对准航向的速度阈值
       yaw_align_error_threshold: 0.15                   # 车尾对齐 yaw 的误差阈值（弧度）
       yaw_debug_print: true                             # 是否输出 yaw 调试信息
+      goal_pose_topic: goal_pose                        # 目标点姿态话题（用于读取目标 yaw）
       min_approach_linear_velocity: 0.05                # 接近目标时的最小速度（米/秒）
       approach_velocity_scaling_dist: 0.5               # 开始减速的接近距离（米）
       v_linear_min: -0.6                                # 最小线速度命令（米/秒）
