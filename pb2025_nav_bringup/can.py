@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import sys
 import time
 from dataclasses import dataclass
 from typing import Iterable, Optional, Tuple
 
 # ! 运行方式，先运行nav2,再另一个终端
-# cd src/robot_nav/pb2025_nav_bringup 
-# sudo chmod 666 /dev/ttyACM0 
-# python can.py --mode cmd_vel --port /dev/ttyACM0 --cmd-topic /cmd_vel --echo
+# cd src/robot_nav/pb2025_nav_bringup
+# sudo chmod 666 /dev/ttyACM*
+# python can.py --mode cmd_vel --cmd-topic /cmd_vel --echo  # 自动尝试 ttyACM0，不行就尝试 ttyACM1
 # 保存地图 
 # 终端运行 ros2 launch pb2025_nav_bringup rm_navigation_reality_launch.py \ slam:=True \ use_robot_state_pub:=True
 # 第二个终端运行 ros2 launch point_lio point_lio.launch.py
@@ -259,7 +260,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         description="串口/底盘调试工具：手动发送或将 /cmd_vel 映射为 CAN 帧")
     parser.add_argument('--mode', choices=['cmd_vel', 'manual'], default='cmd_vel',
                         help='cmd_vel: ROS2 订阅发送；manual: 交互式十六进制发送')
-    parser.add_argument('--port', default='/dev/ttyACM0', help='串口设备，例如 /dev/ttyUSB0')
+    parser.add_argument('--port', default='/dev/ttyACM0', help='串口设备，例如 /dev/ttyACM0 或 /dev/ttyACM1')
     parser.add_argument('--baudrate', type=int, default=115200, help='串口波特率')
     parser.add_argument('--timeout', type=float, default=0.02, help='串口超时时间 (s)')
     parser.add_argument('--default-msg', default="7B 00 00 00 64 00 00 00 00 1F 7D",
@@ -291,8 +292,18 @@ def main() -> None:
     parser = build_arg_parser()
     args, ros_args = parser.parse_known_args()
 
-    serial_handle = Serial(port=args.port, baudrate=args.baudrate, timeout=args.timeout)
-    print(f"已连接串口 {args.port} @ {args.baudrate}bps")
+    # 自动检测串口：先尝试 ttyACM0，再尝试 ttyACM1
+    port = args.port
+    if port == '/dev/ttyACM0' or port == '/dev/ttyACM1':
+        if not os.path.exists(port):
+            # 尝试另一个端口
+            fallback_port = '/dev/ttyACM1' if port == '/dev/ttyACM0' else '/dev/ttyACM0'
+            if os.path.exists(fallback_port):
+                port = fallback_port
+                print(f"检测到 {args.port} 不存在，使用 {port} 代替", file=sys.stderr)
+
+    serial_handle = Serial(port=port, baudrate=args.baudrate, timeout=args.timeout)
+    print(f"已连接串口 {port} @ {args.baudrate}bps")
     try:
         if args.mode == 'manual':
             interactive_console(serial_handle, args.default_msg)

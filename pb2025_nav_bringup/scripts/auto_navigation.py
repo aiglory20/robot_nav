@@ -24,6 +24,7 @@ from nav2_msgs.action import NavigateToPose
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 from action_msgs.msg import GoalStatus
+from std_msgs.msg import Int32, String
 import time
 from tf2_ros import Buffer, TransformListener
 import tf2_py as tf2
@@ -64,16 +65,32 @@ class AutoNavigator(Node):
             Odometry, "/odometry", self.odom_callback, 10
         )
 
+        # ROS通信: 订阅导航控制命令 (0=停止, 1=继续)
+        self.nav_control_sub = self.create_subscription(
+            Int32, "/nav_control", self.nav_control_callback, 10
+        )
+
+        # ROS通信: 发布当前航点状态 (A, B, C等)
+        self.waypoint_status_pub = self.create_publisher(String, "/waypoint_status", 10)
+
+        # 导航控制状态 (默认为1=运行中)
+        self.nav_enabled = 1
+
+        # 恢复导航的延迟标志
+        self.resume_timer = None
+        self.is_resuming = False
+
         self.get_logger().info(f"等待 action server: {action_name}")
         self._action_client.wait_for_server()
         self.get_logger().info("Action server 已连接!")
 
-        # 定义三个目标点 (x, y, yaw, wait_time) - rmuc_2025 地图上的坐标
+        # 定义三个目标点 (x, y, yaw, wait_time, label) - rmuc_2025 地图上的坐标
         # wait_time: 到达后停留的时间（秒）
+        # label: 航点字母标识
         self.waypoints = [
-            {"name": "Point B", "x": -3.182, "y": -0.839, "yaw": 45.0, "wait_time": 10.0},
-            {"name": "Point C", "x": -6.887, "y": 4.630, "yaw": 0.0, "wait_time": 1.0},
-            {"name": "Point A", "x": 0.024, "y": -0.025, "yaw": 60.0, "wait_time": 1.0},
+            {"name": "Point B", "x": -3.182, "y": -0.839, "yaw": 45.0, "wait_time": 10.0, "label": "B"},
+            {"name": "Point C", "x": -6.887, "y": 4.630, "yaw": 0.0, "wait_time": 1.0, "label": "C"},
+            {"name": "Point A", "x": 0.024, "y": -0.025, "yaw": 60.0, "wait_time": 1.0, "label": "A"},
         ]
         
         # 原始坐标（问题可能在Point A太近）：
@@ -136,11 +153,70 @@ class AutoNavigator(Node):
         """里程计回调"""
         self.last_odom = msg
 
+    def nav_control_callback(self, msg):
+        """导航控制回调 - 接收0(停止)或1(继续)"""
+        control_value = msg.data
+
+        if control_value == 0 and self.nav_enabled == 1:
+            # 停止导航
+            self.nav_enabled = 0
+            self.get_logger().info("🛑 收到停止命令，暂停导航")
+
+            # 取消正在进行的恢复定时器
+            if self.resume_timer is not None:
+                self.resume_timer.cancel()
+                self.resume_timer = None
+                self.is_resuming = False
+                self.get_logger().info("已取消恢复定时器")
+
+            if self.current_goal_handle is not None:
+                self.get_logger().info("取消当前导航任务...")
+                self.current_goal_handle.cancel_goal_async()
+
+        elif control_value == 1 and self.nav_enabled == 0 and not self.is_resuming:
+            # 恢复导航 - 使用定时器异步等待10秒
+            self.is_resuming = True
+            self.get_logger().info("▶️  收到继续命令，将在10秒后恢复导航...")
+
+            # 取消之前的定时器（如果有）
+            if self.resume_timer is not None:
+                self.resume_timer.cancel()
+
+            # 创建一次性定时器，10秒后执行恢复函数
+            self.resume_timer = self.create_timer(10.0, self.resume_navigation_callback)
+
+    def resume_navigation_callback(self):
+        """定时器回调 - 恢复导航"""
+        # 销毁定时器（一次性）
+        if self.resume_timer is not None:
+            self.resume_timer.cancel()
+            self.destroy_timer(self.resume_timer)
+            self.resume_timer = None
+
+        self.is_resuming = False
+        self.nav_enabled = 1
+        self.get_logger().info("✅ 等待完成，开始恢复导航")
+
+        # 如果之前被停止，重新发送当前航点
+        if not self.is_navigating and self.current_waypoint_index < len(self.waypoints):
+            self.send_goal(self.waypoints[self.current_waypoint_index])
+
     def send_goal(self, waypoint):
         """发送导航目标"""
+        # 检查导航是否被禁用
+        if self.nav_enabled == 0:
+            self.get_logger().warn("⚠️  导航已被禁用，跳过发送目标")
+            return
+
         self.get_logger().info(
             f"导航到 {waypoint['name']}: x={waypoint['x']}, y={waypoint['y']}, yaw={waypoint['yaw']}°"
         )
+
+        # 发布当前航点标识
+        waypoint_msg = String()
+        waypoint_msg.data = waypoint.get('label', '?')
+        self.waypoint_status_pub.publish(waypoint_msg)
+        self.get_logger().info(f"📍 发布航点状态: {waypoint_msg.data}")
 
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = self.create_pose_stamped(
@@ -379,6 +455,12 @@ class AutoNavigator(Node):
             self.send_goal(self.waypoints[0])
         else:
             self.get_logger().error("没有定义航点!")
+
+    def __del__(self):
+        """析构函数 - 清理资源"""
+        if self.resume_timer is not None:
+            self.resume_timer.cancel()
+            self.destroy_timer(self.resume_timer)
 
 
 def main(args=None):
